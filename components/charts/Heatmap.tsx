@@ -2,7 +2,7 @@
 
 import React, { useRef, useCallback, useMemo } from 'react';
 import { DataPoint } from '@/lib/types';
-import { useChartRenderer, DrawFunction } from '@/hooks/useChartRenderer';
+import { useChartRenderer, DrawFunction } from '@/hooks/useChartRenderer'; // We still need this for the hook
 
 // The renderer will now receive the pre-computed grid
 type HeatmapGrid = {
@@ -24,7 +24,7 @@ const X_AXIS_VALUE_COUNT = 5;
 const AXIS_COLOR = 'rgba(0, 242, 255, 0.2)';
 const LABEL_COLOR = '#e0e0e0';
 
-// Gradient (unchanged)
+// Color gradient (memoized)
 const useColorGradient = () => {
   return useMemo(() => {
     const colors = [
@@ -32,7 +32,7 @@ const useColorGradient = () => {
       'rgba(0, 242, 255, 0.2)',
       'rgba(0, 242, 255, 0.5)',
       'rgba(0, 242, 255, 0.8)',
-      'rgba(255, 0, 255, 1.0)',
+      'rgba(255, 0, 255, 1.0)', // Magenta for high density
     ];
     return (count: number, maxCount: number) => {
       if (maxCount === 0 || count === 0) return colors[0];
@@ -47,23 +47,22 @@ const useColorGradient = () => {
 };
 
 /**
- * The new draw function.
- * It is now very dumb and fast. It just draws the grid.
+ * This is now a local helper function, NOT a DrawFunction.
  */
-const drawHeatmap: DrawFunction<HeatmapGrid> = (
-  ctx,
-  heatmapData, // Receives the pre-computed grid
-  cssWidth,
-  cssHeight
+// --- THIS IS THE FIX: Removed ': DrawFunction<HeatmapGrid>' ---
+const drawHeatmap = (
+  ctx: CanvasRenderingContext2D,
+  heatmapData: HeatmapGrid[], // Receives the pre-computed grid
+  cssWidth: number,
+  cssHeight: number,
+  colorGradient: (count: number, max: number) => string
 ) => {
-  // We get the single grid object from the data array
   const { grid, maxCount } = heatmapData[0]; 
   if (!grid) return;
 
   const numXBins = grid.length;
   const numYBins = grid[0].length;
 
-  // --- Mobile Responsive PADDING ---
   const mobilePadding = cssWidth < 480 ? 20 : 40;
   const padding = cssWidth < 768 ? mobilePadding : 40;
   const fontSize = cssWidth < 480 ? '10px monospace' : '12px monospace';
@@ -92,16 +91,13 @@ const drawHeatmap: DrawFunction<HeatmapGrid> = (
   ctx.fillStyle = LABEL_COLOR;
   ctx.font = fontSize;
 
-  // Y-Axis
   for (let i = 0; i <= yAxisLabelCount; i++) {
-    const value = 0 + (100) * (i / yAxisLabelCount); // 0-100 range
+    const value = 0 + (100) * (i / yAxisLabelCount);
     const y = chartTop + chartHeight - (value / 100) * chartHeight;
     ctx.fillText(value.toFixed(0), chartLeft - padding + 10, y + 3);
   }
   
-  // X-Axis
   for (let i = 0; i <= xAxisLabelCount; i++) {
-    // We can't know the timestamp, so we'll just label by bin index or %
     const label = `${(i / xAxisLabelCount) * 100}%`;
     const x = chartLeft + (i / xAxisLabelCount) * chartWidth;
     ctx.textAlign = 'center';
@@ -110,22 +106,11 @@ const drawHeatmap: DrawFunction<HeatmapGrid> = (
   ctx.textAlign = 'left';
 
   // --- Draw Heatmap Cells ---
-  const colorGradient = useColorGradient(); // This is a hook, hmm
-  // We'll redefine the gradient func here for simplicity
-  const colors = ['rgba(0, 242, 255, 0.0)', 'rgba(0, 242, 255, 0.2)', 'rgba(0, 242, 255, 0.5)', 'rgba(0, 242, 255, 0.8)', 'rgba(255, 0, 255, 1.0)'];
-  const getColor = (count: number, max: number) => {
-      if (max === 0 || count === 0) return colors[0];
-      const ratio = count / max;
-      const index = Math.min(colors.length - 1, Math.floor(ratio * colors.length));
-      return colors[index];
-  };
-
-
   for (let xBin = 0; xBin < numXBins; xBin++) {
     for (let yBin = 0; yBin < numYBins; yBin++) {
       const count = grid[xBin][yBin];
       if (count > 0) {
-        ctx.fillStyle = getColor(count, maxCount);
+        ctx.fillStyle = colorGradient(count, maxCount);
         const x = chartLeft + xBin * xBinWidth;
         const y = chartTop + chartHeight - (yBin + 1) * yBinHeight;
         ctx.fillRect(x, y, xBinWidth, yBinHeight);
@@ -140,9 +125,8 @@ export default function Heatmap({
   numYBins = 10,
 }: HeatmapProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const colorGradient = useColorGradient();
 
-  // --- THIS IS THE FIX ---
-  // We run the expensive grid calculation here, ONCE.
   const heatmapGrid = useMemo(() => {
     if (data.length === 0) return [{ grid: [], maxCount: 0 }];
 
@@ -168,14 +152,25 @@ export default function Heatmap({
       }
     });
 
-    // We pass the pre-computed grid as an array of one item
     return [{ grid, maxCount }];
   }, [data, numXBins, numYBins]);
 
+  // This 'memoizedDraw' function HAS the correct signature
+  // that 'useChartRenderer' expects.
+  const memoizedDraw: DrawFunction<HeatmapGrid> = useCallback((
+    ctx,
+    data,
+    cssWidth,
+    cssHeight
+  ) => {
+    // This wrapper calls the real draw function with the extra argument
+    drawHeatmap(ctx, data, cssWidth, cssHeight, colorGradient);
+  }, [colorGradient]); // Re-create if the gradient func changes
+
   useChartRenderer({
     canvasRef,
-    data: heatmapGrid, // Pass the new grid
-    draw: drawHeatmap,
+    data: heatmapGrid, 
+    draw: memoizedDraw, // This is correct
   });
 
   return (

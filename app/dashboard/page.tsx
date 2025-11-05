@@ -1,5 +1,6 @@
 'use client';
 
+// --- ADD THIS IMPORT ---
 import React, { useState, useMemo, useCallback, useDeferredValue, useTransition } from 'react';
 import { DataProvider, useData } from '@/components/providers/DataProvider';
 import { generateInitialDataset } from '@/lib/dataGenerator';
@@ -98,34 +99,21 @@ function DashboardLayout() {
   });
   const [timeRangeMs, setTimeRangeMs] = useState<number>(0);
   
-  // -- ADVANCED PERFORMANCE PATTERN --
-  // This is the key to standing out.
-  // We use useTransition to keep the UI snappy *while* filters are changing.
   const [, startTransition] = useTransition();
-
-  // We defer the rapidly-updating data stream.
-  // This tells React to de-prioritize filtering this data,
-  // making the UI controls (sliders, buttons) feel instant.
   const deferredDataPoints = useDeferredValue(dataPoints);
 
-  // Memoized processing now depends on the DEFERRED data.
-  // This is the key: it won't block the main thread or lag the controls.
   const processedData = useMemo(() => {
     const now = Date.now();
     
-    // 1. Apply time range filter
     const timeFiltered = timeRangeMs === 0
       ? deferredDataPoints
       : deferredDataPoints.filter(p => p.timestamp >= (now - timeRangeMs));
 
-    // 2. Apply value range filter
     return timeFiltered.filter(
       p => p.value >= filters.valueRange.min && p.value <= filters.valueRange.max
     );
   }, [deferredDataPoints, filters, timeRangeMs]);
 
-  // Callbacks for controls, wrapped in startTransition.
-  // This tells React to treat the state update as non-urgent.
   const handleFilterChange = useCallback((newFilters: FilterState) => {
     startTransition(() => {
       setFilters(newFilters);
@@ -154,9 +142,6 @@ function DashboardLayout() {
         onTimeRangeChange={handleTimeRangeChange}
       />
       
-      {/* We pass the processed data to the grid.
-        This demonstrates a clean, top-down data flow.
-      */}
       <ChartGrid 
         data={processedData} 
         aggregationIntervalMs={filters.aggregationIntervalMs} 
@@ -167,8 +152,10 @@ function DashboardLayout() {
 
 // --- Page Entry Point ---
 export default function DashboardPage() {
-  // Generate the initial dataset here, on the client.
-  const initialData = generateInitialDataset(1000, 100);
+  // --- THIS IS THE FIX ---
+  // By using useState with a function, this generator
+  // runs ONLY ONCE. The client will reuse the server's state.
+  const [initialData] = useState(() => generateInitialDataset(1000, 100));
 
   return (
     <DataProvider initialData={initialData}>
