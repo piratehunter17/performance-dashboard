@@ -5,7 +5,10 @@ import { useState, useEffect, useCallback } from 'react';
 interface VirtualizationOptions {
   itemHeight: number;
   itemCount: number;
-  containerRef: React.RefObject<HTMLElement>;
+  // --- THIS IS THE FIX ---
+  // We change HTMLElement to HTMLElement | null
+  // to match the type provided by useRef(null).
+  containerRef: React.RefObject<HTMLElement | null>;
   overscan?: number; // Number of items to render outside the viewport
 }
 
@@ -41,6 +44,7 @@ export const useVirtualization = ({
   
   // Attach scroll and resize listeners
   useEffect(() => {
+    // We must check if current is null
     const container = containerRef.current;
     if (!container) return;
 

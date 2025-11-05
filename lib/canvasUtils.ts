@@ -10,24 +10,27 @@ export const configureCanvasDPI = (
   ctx: CanvasRenderingContext2D
 ): number => {
   const dpr = window.devicePixelRatio || 1;
-  const rect = canvas.getBoundingClientRect();
+  // Reads the size React has set in the 'style' prop
+  const rect = canvas.getBoundingClientRect(); 
 
-  // Set the display size (CSS pixels)
   const displayWidth = Math.floor(rect.width);
   const displayHeight = Math.floor(rect.height);
 
+  // Check if the canvas backing store size matches the display size
   if (canvas.width !== displayWidth * dpr || canvas.height !== displayHeight * dpr) {
-    // Set the actual backing store size (physical pixels)
+    // Set the backing store size (physical pixels)
     canvas.width = displayWidth * dpr;
     canvas.height = displayHeight * dpr;
-
-    // Scale the context to match
-    ctx.scale(dpr, dpr);
+    
+    // Reset the transform to prevent cumulative scaling
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
-
-  // Set the CSS size
-  canvas.style.width = `${displayWidth}px`;
-  canvas.style.height = `${displayHeight}px`;
+  
+  // --- THIS IS THE FIX ---
+  // We DO NOT set canvas.style.width or canvas.style.height here.
+  // React is 100% in control of the component's style.
+  // We only read from it and update the backing store (canvas.width/height).
+  // --- END FIX ---
 
   return dpr;
 };

@@ -4,41 +4,36 @@ import React, { useRef, useState, useEffect } from 'react';
 import { useVirtualization } from '@/hooks/useVirtualization';
 import { DataPoint } from '@/lib/types';
 
-// --- Viewport Hook ---
-// We add this small hook here to manage responsiveness without CSS files
+// --- HYDRATION-SAFE VIEWPORT HOOK ---
 const useViewport = () => {
-  const [width, setWidth] = useState(0);
-
+  const [width, setWidth] = useState<number | undefined>(undefined);
   useEffect(() => {
     const handleResize = () => setWidth(window.innerWidth);
-    handleResize(); // Set initial width
+    handleResize(); 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-  
-  return { width };
+  if (width === undefined) {
+    return { width: 1024, isMobile: false }; 
+  }
+  return { width, isMobile: width < 768 };
 };
-
-const MOBILE_BREAKPOINT = 768; // pixels
+// --- END HOOK ---
 
 export default function DataTable({ data }: { data: DataPoint[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   
-  // --- Responsive State ---
-  const { width } = useViewport();
-  const isMobile = width < MOBILE_BREAKPOINT;
+  const { isMobile } = useViewport();
   
-  // Use a taller row on mobile to fit stacked content
   const rowHeight = isMobile ? 60 : 30;
+  const tableHeight = isMobile ? '300px' : '340px';
 
-  // Use the virtualization hook
   const { startIndex, endIndex, totalHeight } = useVirtualization({
-    itemHeight: rowHeight, // Pass the responsive row height
+    itemHeight: rowHeight,
     itemCount: data.length,
     containerRef: containerRef,
   });
 
-  // Get the slice of items that are currently visible
   const visibleItems = data.slice(startIndex, endIndex);
 
   // --- Futuristic Styles ---
@@ -57,13 +52,10 @@ export default function DataTable({ data }: { data: DataPoint[] }) {
       color: lightText,
       fontFamily: 'monospace',
       borderRadius: '8px',
-      overflow: 'hidden', // To contain the rounded corners
+      overflow: 'hidden',
     }}>
-      {/* Header: We hide this on mobile to save vertical space.
-        The stacked rows will be self-explanatory.
-      */}
       <div style={{
-        display: isMobile ? 'none' : 'flex', // Hide on mobile
+        display: isMobile ? 'none' : 'flex',
         justifyContent: 'space-between',
         fontWeight: 'bold',
         padding: '0.5rem 1rem',
@@ -77,21 +69,18 @@ export default function DataTable({ data }: { data: DataPoint[] }) {
         <span>Value</span>
       </div>
       
-      {/* Scroll Container */}
       <div
         ref={containerRef}
         style={{
-          height: '340px', // This height is fine, as it's set by the parent
+          height: tableHeight, // Use dynamic height
           overflowY: 'auto',
           position: 'relative',
           backgroundColor: cardBg,
           color: lightText,
         }}
       >
-        {/* Total Height Spacer */}
         <div style={{ height: `${totalHeight}px`, width: '100%' }}>
           
-          {/* Visible Rows */}
           {visibleItems.map((item, index) => {
             const rowIndex = startIndex + index;
             
@@ -104,28 +93,26 @@ export default function DataTable({ data }: { data: DataPoint[] }) {
                   left: 0,
                   right: 0,
                   height: `${rowHeight}px`,
-                  
-                  // --- Responsive Layout ---
                   display: 'flex',
                   flexDirection: isMobile ? 'column' : 'row',
                   alignItems: isMobile ? 'flex-start' : 'center',
                   justifyContent: isMobile ? 'center' : 'space-between',
                   padding: isMobile ? '0.5rem 1rem' : '0 1rem',
                   gap: isMobile ? '0.25rem' : '0',
-
-                  // --- Futuristic Styles ---
                   fontFamily: 'monospace',
                   backgroundColor: rowIndex % 2 === 0 ? cardBg : darkBg,
                   borderBottom: `1px solid ${borderColorDim}`,
                   color: lightText,
+                  overflow: 'hidden', 
                 }}
               >
-                {/* On mobile, we stack and label the data.
-                  On desktop, we just show the values.
-                */}
                 <span style={{
                   fontSize: isMobile ? '0.8em' : '1em',
                   color: isMobile ? accentColor : lightText,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  maxWidth: isMobile ? '100%' : '250px',
                 }}>
                   {isMobile ? 'TS: ' : ''}{new Date(item.timestamp).toISOString()}
                 </span>

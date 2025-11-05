@@ -134,6 +134,11 @@ a {
   background-color: var(--card-background);
   border-radius: 8px;
   box-shadow: 0 0 15px var(--accent-glow), 0 0 10px var(--accent-glow) inset;
+  
+  /* --- THIS IS THE FIX --- */
+  /* This ensures that if content (like the data table) 
+     tries to overflow, it gets cut off here, not at the body. */
+  overflow: hidden;
 }
 
 .db-chart-container h2 {
@@ -183,23 +188,18 @@ a {
   .db-stream-button {
     height: 50px; /* Taller button for easier tapping */
   }
-
-  /*
-   This rule makes the charts stack into a single column
-   on screens narrower than 450px (the min-width)
-  */
+  
+  /* --- THIS IS THE FIX --- */
+  /* This rule must be in the 768px query, not just 480px.
+     This stacks the charts on ALL tablets and phones. */
+  .db-chart-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 480px) {
   .db-page-wrapper {
     padding: 0.5rem;
-  }
-  
-  /* This overrides the desktop grid rule to ensure
-    charts stack properly on very small phones.
-  */
-  .db-chart-grid {
-    grid-template-columns: 1fr;
   }
 
   .db-chart-container {

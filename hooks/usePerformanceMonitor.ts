@@ -29,7 +29,10 @@ export const usePerformanceMonitor = () => {
   const frameCountRef = useRef(0);
   const lastTimeRef = useRef(performance.now());
   const animationFrameIdRef = useRef(0);
-  const memoryIntervalIdRef = useRef<NodeJS.Timeout>();
+  
+  // --- THIS IS THE FIX ---
+  // We provide 'null' as the initial value for the ref.
+  const memoryIntervalIdRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // --- FPS Monitoring ---
@@ -76,6 +79,3 @@ export const usePerformanceMonitor = () => {
 
   return metrics;
 };
-
-// --- DELETE THIS LINE ---
-// export default usePerformanceMonitor;

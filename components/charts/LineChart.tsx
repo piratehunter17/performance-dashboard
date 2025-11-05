@@ -1,37 +1,58 @@
 'use client';
 
-import React, { useRef } from 'react';
+// Make sure useState and useEffect are imported
+import React, { useRef, useState, useEffect } from 'react';
 import { DataPoint } from '@/lib/types';
 import { useChartRenderer, DrawFunction } from '@/hooks/useChartRenderer';
+
+// --- HYDRATION-SAFE VIEWPORT HOOK ---
+// This hook replaces your old one
+const useViewport = () => {
+  // 1. Default to 'undefined'
+  const [width, setWidth] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    // 2. This effect runs *only* on the client
+    const handleResize = () => setWidth(window.innerWidth);
+    handleResize(); // Set initial width
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []); // Empty array ensures it runs once on client mount
+
+  if (width === undefined) {
+    // 3. On the server (or first client render),
+    // default to a non-mobile state to prevent hydration mismatch.
+    return { width: 1024, isMobile: false }; 
+  }
+
+  // 4. On subsequent client renders, return the real value.
+  return { width, isMobile: width < 768 };
+};
+// --- END HOOK ---
 
 interface LineChartProps {
   data: DataPoint[];
 }
 
-// --- Futuristic Palette ---
-const AXIS_COLOR = 'rgba(0, 242, 255, 0.2)'; // --border-color-dim
-const LABEL_COLOR = '#e0e0e0'; // --foreground
-const LINE_COLOR = '#00f2ff'; // --accent
-const LINE_GLOW = 'rgba(0, 242, 255, 0.3)'; // --accent-glow
+const AXIS_COLOR = 'rgba(0, 242, 255, 0.2)'; 
+const LABEL_COLOR = '#e0e0e0'; 
+const LINE_COLOR = '#00f2ff'; 
+const LINE_GLOW = 'rgba(0, 242, 255, 0.3)';
 
-/**
- * The specific drawing logic for a Line Chart.
- */
 const drawLineChart: DrawFunction<DataPoint> = (
   ctx,
   data,
   cssWidth,
   cssHeight
 ) => {
-  // --- MOBILE FIX: Dynamic values based on width ---
   const mobilePadding = cssWidth < 480 ? 20 : 40;
   const padding = cssWidth < 768 ? mobilePadding : 40;
   const fontSize = cssWidth < 480 ? '10px monospace' : '12px monospace';
   const yAxisLabelCount = cssWidth < 480 ? 3 : 5;
   const xAxisLabelCount = cssWidth < 480 ? 3 : 5;
-  // ---
 
-  // --- Chart Calculation ---
+  if (data.length === 0) return; // Guard clause
+
   const minX = data[0].timestamp;
   const maxX = data[data.length - 1].timestamp;
   const minY = 0;
@@ -44,13 +65,9 @@ const drawLineChart: DrawFunction<DataPoint> = (
 
   const mapX = (value: number) => 
     chartLeft + ((value - minX) / (maxX - minX)) * chartWidth;
-    
   const mapY = (value: number) => 
     chartTop + chartHeight - ((value - minY) / (maxY - minY)) * chartHeight;
-
-  // --- Drawing ---
   
-  // 1. Draw Axes
   ctx.beginPath();
   ctx.strokeStyle = AXIS_COLOR; 
   ctx.lineWidth = 1;
@@ -60,7 +77,6 @@ const drawLineChart: DrawFunction<DataPoint> = (
   ctx.lineTo(chartLeft + chartWidth, chartTop + chartHeight);
   ctx.stroke();
 
-  // 2. Draw Axis Labels
   ctx.fillStyle = LABEL_COLOR; 
   ctx.font = fontSize; 
   
@@ -76,17 +92,13 @@ const drawLineChart: DrawFunction<DataPoint> = (
   }
   ctx.textAlign = 'left';
 
-  // 3. Draw the Line
   ctx.beginPath();
   ctx.strokeStyle = LINE_COLOR; 
   ctx.lineWidth = 2;
-  
   ctx.shadowColor = LINE_GLOW;
   ctx.shadowBlur = 10;
-
-  // --- Performance Tweak for large data ---
-  // If we have more data points than horizontal pixels, we can skip points
-  const step = Math.ceil(data.length / chartWidth);
+  
+  const step = Math.max(1, Math.ceil(data.length / chartWidth));
   
   for (let i = 0; i < data.length; i += step) {
     const point = data[i];
@@ -99,10 +111,8 @@ const drawLineChart: DrawFunction<DataPoint> = (
       ctx.lineTo(x, y);
     }
   }
-  // Draw the very last point to ensure the line goes to the end
   const lastPoint = data[data.length - 1];
   ctx.lineTo(mapX(lastPoint.timestamp), mapY(lastPoint.value));
-  
   ctx.stroke();
   
   ctx.shadowColor = 'transparent';
@@ -112,6 +122,9 @@ const drawLineChart: DrawFunction<DataPoint> = (
 
 export default function LineChart({ data }: LineChartProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  
+  const { isMobile } = useViewport();
+  const chartHeight = isMobile ? '300px' : '400px';
 
   useChartRenderer({
     canvasRef,
@@ -122,7 +135,11 @@ export default function LineChart({ data }: LineChartProps) {
   return (
     <canvas
       ref={canvasRef}
-      style={{ width: '100%', height: '400px', display: 'block' }}
+      style={{ 
+        width: '100%', 
+        height: chartHeight, 
+        display: 'block' 
+      }}
     />
   );
 }
