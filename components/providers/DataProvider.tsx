@@ -1,7 +1,8 @@
-'use client'; // This component manages state, so it must be a Client Component
+'use client'; 
 
 import React, { createContext, useContext, ReactNode } from 'react';
 import { DataPoint } from '@/lib/types';
+// --- FIX: Changed to a named import ---
 import { useDataStream } from '@/hooks/useDataStream';
 
 // 1. Define the shape of the data our context will provide
@@ -28,12 +29,6 @@ export const DataProvider: React.FC<DataProviderProps> = ({
   initialData,
   children,
 }) => {
-  // Use the hook we created earlier
-  //
-  // --- THIS IS THE CHANGE ---
-  // We're changing the interval from 100ms to 16ms
-  // (1000ms / 60fps ≈ 16ms) to simulate 60fps data updates.
-  //
   const dataStream = useDataStream(initialData, 16); // 16ms interval (60fps)
 
   return (
@@ -44,10 +39,6 @@ export const DataProvider: React.FC<DataProviderProps> = ({
 };
 
 // 4. Create a custom consumer hook for easy access
-/**
- * Custom hook to access the data stream context.
- * Throws an error if used outside of a DataProvider.
- */
 export const useData = (): DataContextState => {
   const context = useContext(DataContext);
   if (context === undefined) {

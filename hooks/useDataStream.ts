@@ -1,72 +1,88 @@
+'use client';
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { DataPoint } from '../lib/types';
 import { generateNewDataPoint } from '../lib/dataGenerator';
 
-// Define the maximum number of data points to keep in state.
-// This prevents memory leaks and performance degradation over time.
-const MAX_DATA_POINTS = 10000;
-const DEFAULT_INTERVAL_MS = 100; // As per assignment requirements
+// --- NEW STRATEGY ---
+const MAX_DATA_POINTS = 100000; // Hit the 100k Stretch Goal
+const DOWNSAMPLE_TARGET = 50000; // When we downsample, aim for this
 
 /**
- * A custom hook to manage a real-time stream of data points.
- *
- * @param {DataPoint[]} initialData - The dataset to start with.
- * @param {number} [intervalMs=100] - The interval in milliseconds to add new data.
- * @returns {{ dataPoints: DataPoint[], isRunning: boolean, startStream: () => void, stopStream: () => void }}
+ * High-performance downsampling.
+ * Replaces the oldest half of the data with
+ * a new array that is 1/2 its size (by averaging pairs).
  */
+const downsample = (data: DataPoint[]): DataPoint[] => {
+  // Keep the newest 50% of data untouched
+  // We'll downsample the older 50%
+  const cutoff = Math.floor(data.length * 0.5);
+  const recentData = data.slice(cutoff);
+  const oldData = data.slice(0, cutoff);
+  
+  const downsampledOldData: DataPoint[] = [];
+
+  for (let i = 0; i < oldData.length; i += 2) {
+    if (i + 1 < oldData.length) {
+      const p1 = oldData[i];
+      const p2 = oldData[i + 1];
+      // Create a new point by averaging the two old ones
+      downsampledOldData.push({
+        timestamp: p2.timestamp, // Use the newer timestamp
+        value: (p1.value + p2.value) / 2, // Average the value
+      });
+    } else {
+      // Keep the last odd point if it exists
+      downsampledOldData.push(oldData[i]);
+    }
+  }
+  
+  // Return the combined array
+  return [...downsampledOldData, ...recentData];
+};
+
 export const useDataStream = (
   initialData: DataPoint[],
-  intervalMs: number = DEFAULT_INTERVAL_MS
+  intervalMs: number
 ) => {
   const [dataPoints, setDataPoints] = useState<DataPoint[]>(initialData);
-  const [isRunning, setIsRunning] = useState<boolean>(true); // Start running by default
+  const [isRunning, setIsRunning] = useState<boolean>(true);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (isRunning) {
-      // Set up the interval
       intervalRef.current = setInterval(() => {
         const newDataPoint = generateNewDataPoint();
 
         setDataPoints((currentData) => {
-          // Add new data point
-          const updatedData = [...currentData, newDataPoint];
-
-          // Ensure we don't exceed the max data points
-          // We slice from the end to keep the array size manageable.
-          if (updatedData.length > MAX_DATA_POINTS) {
-            // Return a new array containing the latest MAX_DATA_POINTS
-            return updatedData.slice(updatedData.length - MAX_DATA_POINTS);
+          // --- THIS IS THE NEW LOGIC ---
+          // 1. Check if we're over the max
+          if (currentData.length >= MAX_DATA_POINTS) {
+            // 2. If so, downsample and add the new point
+            const downsampledData = downsample(currentData);
+            return [...downsampledData, newDataPoint];
           }
           
-          return updatedData;
+          // 3. Otherwise, just add the new point
+          return [...currentData, newDataPoint];
         });
       }, intervalMs);
     } else if (intervalRef.current) {
-      // Clear interval if running is set to false
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
 
-    // Cleanup function:
-    // This will run when the component unmounts or dependencies change
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
     };
-  }, [isRunning, intervalMs]); // Re-run effect if isRunning or intervalMs changes
+  }, [isRunning, intervalMs]);
 
-  /**
-   * Starts the data stream.
-   */
   const startStream = useCallback(() => {
     setIsRunning(true);
   }, []);
 
-  /**
-   * Stops the data stream.
-   */
   const stopStream = useCallback(() => {
     setIsRunning(false);
   }, []);
@@ -74,4 +90,5 @@ export const useDataStream = (
   return { dataPoints, isRunning, startStream, stopStream };
 };
 
-export default useDataStream;
+// --- REMOVED THE DEFAULT EXPORT ---
+// This was causing runtime errors

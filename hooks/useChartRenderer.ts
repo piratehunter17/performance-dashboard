@@ -12,7 +12,10 @@ export type DrawFunction<T> = (
 ) => void;
 
 interface UseChartRendererOptions<T> {
-  canvasRef: React.RefObject<HTMLCanvasElement>;
+  // --- THIS IS THE FIX ---
+  // We allow the ref to be 'null', which matches
+  // the type from 'useRef<HTMLCanvasElement | null>(null)'
+  canvasRef: React.RefObject<HTMLCanvasElement | null>;
   data: T[];
   draw: DrawFunction<T>;
 }
@@ -34,7 +37,6 @@ export const useChartRenderer = <T>({
   const animationFrameIdRef = useRef(0);
 
   // Keep refs in sync with the latest props
-  // so the animation loop doesn't need to re-run the effect
   useEffect(() => {
     dataRef.current = data;
   }, [data]);
@@ -44,43 +46,36 @@ export const useChartRenderer = <T>({
   }, [draw]);
 
   useEffect(() => {
+    // The ref might be null, so we must check.
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) return; // Exit if canvas isn't mounted yet
 
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) return; // Exit if context isn't available
 
     // The main animation loop
     const renderLoop = () => {
-      // Get the latest data and draw function
       const currentData = dataRef.current;
       const currentDraw = drawRef.current;
       
-      // Configure canvas size and scaling
       configureCanvasDPI(canvas, ctx);
       const { width: cssWidth, height: cssHeight } = canvas.getBoundingClientRect();
 
-      // Clear the canvas
       ctx.clearRect(0, 0, cssWidth, cssHeight);
 
-      // Call the specific chart's draw function
       if (currentData.length > 0) {
         currentDraw(ctx, currentData, cssWidth, cssHeight);
       }
 
-      // Continue the loop
       animationFrameIdRef.current = requestAnimationFrame(renderLoop);
     };
 
     // --- Resize Handling ---
-    // Start the loop and redraw on resize
     const resizeObserver = new ResizeObserver(() => {
-      // The render loop will pick up the new size on its next frame.
-      // No need to manually call renderLoop() here.
+      // Loop will pick up new size on next frame
     });
     resizeObserver.observe(canvas);
 
-    // Start the loop
     animationFrameIdRef.current = requestAnimationFrame(renderLoop);
 
     // Cleanup
@@ -88,7 +83,7 @@ export const useChartRenderer = <T>({
       resizeObserver.disconnect();
       cancelAnimationFrame(animationFrameIdRef.current);
     };
-  }, [canvasRef]); // Only run this effect once on mount
+  }, [canvasRef]); // Effect now correctly depends on canvasRef
 };
 
 export default useChartRenderer;
