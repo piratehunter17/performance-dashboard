@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useCallback, useState, useEffect } from 'react';
+import React, { useRef, useCallback, useState, useEffect, useMemo } from 'react';
 import { DataPoint } from '@/lib/types';
 import { useChartRenderer, DrawFunction } from '@/hooks/useChartRenderer';
 
@@ -26,8 +26,6 @@ interface ScatterPlotProps {
   data: DataPoint[];
   pointSize?: number;
   pointColor?: string;
-  viewDomain: ViewDomain;
-  onViewChange: (domain: ViewDomain | null) => void;
 }
 
 const AXIS_COLOR = 'rgba(0, 242, 255, 0.2)'; 
@@ -120,15 +118,30 @@ export default function ScatterPlot({
   data,
   pointSize = 3,
   pointColor = POINT_COLOR_DEFAULT, 
-  viewDomain,
-  onViewChange,
 }: ScatterPlotProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const { isMobile } = useViewport();
   const chartHeight = isMobile ? '250px' : '300px';
 
+  const [viewDomain, setViewDomain] = useState<ViewDomain | null>(null);
+  
+  const defaultDomain = useMemo(() => {
+    if (data.length === 0) return { min: Date.now() - 1000, max: Date.now() };
+    return { min: data[0].timestamp, max: data[data.length - 1].timestamp };
+  }, [data]);
+
+  const activeView = viewDomain || defaultDomain;
+
   const isPanningRef = useRef(false);
   const lastPanXRef = useRef(0);
+
+  const handleViewChange = (newDomain: ViewDomain | null) => {
+    setViewDomain(newDomain);
+  };
+  
+  const handleResetView = () => {
+    setViewDomain(null);
+  };
 
   const xToTimestamp = (x: number) => {
     if (!canvasRef.current) return 0;
@@ -136,7 +149,7 @@ export default function ScatterPlot({
     const padding = isMobile ? (rect.width < 480 ? 20 : 40) : 40;
     const chartWidth = rect.width - padding * 2;
     const chartLeft = padding;
-    const { min, max } = viewDomain;
+    const { min, max } = activeView;
     const xInChart = x - rect.left - chartLeft;
     const xRatio = xInChart / chartWidth;
     return min + (max - min) * xRatio;
@@ -145,7 +158,7 @@ export default function ScatterPlot({
   const handleWheel = (e: React.WheelEvent) => {
     if (e.ctrlKey) {
       e.preventDefault(); 
-      const { min, max } = viewDomain;
+      const { min, max } = activeView;
       const range = max - min;
       const zoomFactor = 0.001; 
       const zoomAmount = e.deltaY * zoomFactor;
@@ -155,21 +168,25 @@ export default function ScatterPlot({
       const mouseTimestamp = xToTimestamp(e.clientX);
       const newMin = mouseTimestamp - (mouseTimestamp - min) * (newRange / range);
       const newMax = mouseTimestamp + (max - mouseTimestamp) * (newRange / range);
-      onViewChange({ min: newMin, max: newMax });
+      handleViewChange({ min: newMin, max: newMax });
     }
   };
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  // --- REFACTORED PAN LOGIC ---
+
+  // 1. Logic for starting a pan
+  const handlePanStart = (clientX: number) => {
     isPanningRef.current = true;
-    lastPanXRef.current = e.clientX;
+    lastPanXRef.current = clientX;
     if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing';
   };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
+  
+  // 2. Logic for moving a pan
+  const handlePanMove = (clientX: number) => {
     if (!isPanningRef.current) return;
-    const { min, max } = viewDomain;
+    const { min, max } = activeView;
     const range = max - min;
-    const deltaX = e.clientX - lastPanXRef.current;
+    const deltaX = clientX - lastPanXRef.current;
     if (deltaX === 0) return;
     if (!canvasRef.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
@@ -178,24 +195,43 @@ export default function ScatterPlot({
     const timeDelta = (deltaX / chartWidth) * range;
     const newMin = min - timeDelta;
     const newMax = max - timeDelta;
-    lastPanXRef.current = e.clientX;
-    onViewChange({ min: newMin, max: newMax });
+    lastPanXRef.current = clientX;
+    handleViewChange({ min: newMin, max: newMax });
   };
-
-  const handleMouseUp = () => {
+  
+  // 3. Logic for ending a pan
+  const handlePanEnd = () => {
     isPanningRef.current = false;
     if (canvasRef.current) canvasRef.current.style.cursor = 'grab';
   };
 
-  // --- NEW: Zoom Button Logic ---
+  // 4. Mouse event handlers
+  const handleMouseDown = (e: React.MouseEvent) => handlePanStart(e.clientX);
+  const handleMouseMove = (e: React.MouseEvent) => handlePanMove(e.clientX);
+
+  // 5. NEW: Touch event handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length > 0) {
+      e.preventDefault(); // Prevent page scroll
+      handlePanStart(e.touches[0].clientX);
+    }
+  };
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length > 0) {
+      e.preventDefault(); // Prevent page scroll
+      handlePanMove(e.touches[0].clientX);
+    }
+  };
+  // --- END REFACTOR ---
+
   const zoom = (factor: number) => {
-    const { min, max } = viewDomain;
+    const { min, max } = activeView;
     const range = max - min;
     const center = min + range / 2;
     const newRange = range * factor;
     const newMin = center - newRange / 2;
     const newMax = center + newRange / 2;
-    onViewChange({ min: newMin, max: newMax });
+    handleViewChange({ min: newMin, max: newMax });
   };
   
   const handleZoomIn = () => zoom(0.8);
@@ -203,11 +239,10 @@ export default function ScatterPlot({
 
   useChartRenderer({
     canvasRef,
-    data: [{ data, viewDomain, pointSize, pointColor }],
+    data: [{ data, viewDomain: activeView, pointSize, pointColor }],
     draw: drawScatterPlot,
   });
 
-  // --- NEW: Zoom Button Styles ---
   const zoomButtonStyle: React.CSSProperties = {
     backgroundColor: 'rgba(0, 242, 255, 0.5)',
     border: '1px solid rgba(0, 242, 255, 0.8)',
@@ -222,30 +257,29 @@ export default function ScatterPlot({
     cursor: 'pointer',
     borderRadius: '4px',
     opacity: 0.7,
-    transition: 'opacity 0.2s',
+    transition: 'opacity 0.2s, background-color 0.2s',
+  };
+  
+  const resetButtonStyle: React.CSSProperties = {
+    ...zoomButtonStyle,
+    width: 'auto',
+    fontSize: '12px',
+    padding: '0 8px',
+    textTransform: 'uppercase',
   };
 
   return (
-    // 1. Wrap in a relative container
     <div style={{ position: 'relative', width: '100%', height: chartHeight }}>
-      {/* 2. Add the buttons */}
       <div style={{
         position: 'absolute',
         top: '10px',
         right: '10px',
         zIndex: 10,
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'row-reverse',
         gap: '5px',
+        alignItems: 'center',
       }}>
-        <button 
-          onClick={handleZoomIn} 
-          style={zoomButtonStyle}
-          onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-          onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.7')}
-        >
-          +
-        </button>
         <button 
           onClick={handleZoomOut} 
           style={zoomButtonStyle}
@@ -254,22 +288,45 @@ export default function ScatterPlot({
         >
           -
         </button>
+        <button 
+          onClick={handleZoomIn} 
+          style={zoomButtonStyle}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.7')}
+        >
+          +
+        </button>
+        {viewDomain && (
+          <button 
+            onClick={handleResetView} 
+            style={resetButtonStyle}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.7')}
+          >
+            Reset
+          </button>
+        )}
       </div>
 
-      {/* 3. The Canvas */}
       <canvas
         ref={canvasRef}
         style={{ 
           width: '100%', 
           height: '100%', 
           display: 'block',
-          cursor: 'grab' 
+          cursor: 'grab',
+          touchAction: 'none', // Prevents default touch actions
         }}
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        onMouseUp={handlePanEnd}
+        onMouseLeave={handlePanEnd}
+        // --- ADDED TOUCH HANDLERS ---
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handlePanEnd}
+        onTouchCancel={handlePanEnd}
       />
     </div>
   );

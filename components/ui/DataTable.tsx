@@ -8,6 +8,7 @@ import { DataPoint } from '@/lib/types';
 const useViewport = () => {
   const [width, setWidth] = useState<number | undefined>(undefined);
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const handleResize = () => setWidth(window.innerWidth);
     handleResize(); 
     window.addEventListener('resize', handleResize);
@@ -28,11 +29,24 @@ export default function DataTable({ data }: { data: DataPoint[] }) {
   const rowHeight = isMobile ? 60 : 30;
   const tableHeight = isMobile ? '300px' : '340px';
 
+  // --- Auto-scrolling state and handlers REMOVED ---
+
   const { startIndex, endIndex, totalHeight } = useVirtualization({
     itemHeight: rowHeight,
     itemCount: data.length,
     containerRef: containerRef,
   });
+
+  // --- THIS IS THE FIX ---
+  // This effect now *only* watches the 'data' array.
+  // When new data arrives (changing the array), it
+  // *always* scrolls the container to the very bottom.
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
+  }, [data]); // Run when 'data' prop changes
+  // --- END FIX ---
 
   const visibleItems = data.slice(startIndex, endIndex);
 
@@ -71,8 +85,9 @@ export default function DataTable({ data }: { data: DataPoint[] }) {
       
       <div
         ref={containerRef}
+        // onScroll handler REMOVED
         style={{
-          height: tableHeight, // Use dynamic height
+          height: tableHeight, 
           overflowY: 'auto',
           position: 'relative',
           backgroundColor: cardBg,

@@ -1,46 +1,35 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+// Added 'useRef' to detect clicks outside the dropdown
+import React, { useState, useEffect, useRef } from 'react';
 
-// Simple hook to track viewport width
+// --- HYDRATION-SAFE VIEWPORT HOOK ---
 const useViewport = () => {
-  const [width, setWidth] = useState(0);
-
+  const [width, setWidth] = useState<number | undefined>(undefined);
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const handleResize = () => setWidth(window.innerWidth);
-    
-    // Set initial width on mount
-    handleResize(); 
-    
+    handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-  
-  return { width };
+  if (width === undefined) {
+    return { width: 1024, isMobile: false }; 
+  }
+  return { width, isMobile: width < 768 };
 };
+// --- END HOOK ---
 
 const MOBILE_BREAKPOINT = 768; // pixels
 
 // Define the shape of the filter state
 export interface FilterState {
-  /**
-   * Aggregation interval in milliseconds.
-   * 0 means 'raw data' (no aggregation).
-   */
   aggregationIntervalMs: number;
-  
-  /**
-   * The range of values to display.
-   */
   valueRange: { min: number; max: number };
 }
 
 // Define the component's props
 interface FilterPanelProps {
-  /**
-   * A callback function to notify the parent component
-   * (app/dashboard/page.tsx) when the filter settings change.
-   */
   onFilterChange: (filters: FilterState) => void;
 }
 
@@ -58,22 +47,45 @@ export default function FilterPanel({ onFilterChange }: FilterPanelProps) {
     valueRange: { min: 0, max: 100 }, // Default to full range
   });
   
-  const { width } = useViewport();
-  const isMobile = width < MOBILE_BREAKPOINT;
+  // --- NEW STATE for the custom dropdown ---
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null); // Ref for click-outside
+  // ---
+
+  const { isMobile } = useViewport(); // Use the safe hook
 
   // This effect calls the 'onFilterChange' callback
-  // whenever the local 'filters' state changes.
   useEffect(() => {
     onFilterChange(filters);
   }, [filters, onFilterChange]);
 
-  // Handlers to update local state
-  const handleAggregationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  // --- NEW: Click outside handler ---
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [dropdownRef]);
+  // ---
+
+  // --- NEW: Handlers for custom dropdown ---
+  const handleSelectOption = (value: number) => {
     setFilters((prev) => ({
       ...prev,
-      aggregationIntervalMs: Number(e.target.value),
+      aggregationIntervalMs: value,
     }));
+    setIsDropdownOpen(false); // Close dropdown on select
   };
+  
+  const getSelectedLabel = () => {
+    return AGGREGATION_OPTIONS.find(opt => opt.value === filters.aggregationIntervalMs)?.label;
+  };
+  // ---
 
   const handleMinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newMin = Math.min(Number(e.target.value), filters.valueRange.max);
@@ -92,8 +104,8 @@ export default function FilterPanel({ onFilterChange }: FilterPanelProps) {
   };
 
   // --- Futuristic Styles ---
-  const accentColor = '#00f2ff'; // Bright Cyan
-  const darkBg = '#1a1a2e'; // Dark Navy/Charcoal
+  const accentColor = '#00f2ff';
+  const darkBg = '#1a1a2e';
   const lightText = '#e0e0e0';
   const labelColor = accentColor;
   const borderColor = accentColor;
@@ -109,14 +121,15 @@ export default function FilterPanel({ onFilterChange }: FilterPanelProps) {
       gap: '1.5rem',
       fontFamily: 'monospace',
       boxShadow: `0 0 10px rgba(0, 242, 255, 0.3), 0 0 20px rgba(0, 242, 255, 0.2) inset`,
-      
-      // --- Mobile Responsive Styles ---
       flexDirection: isMobile ? 'column' : 'row',
       alignItems: isMobile ? 'stretch' : 'center',
-      flexWrap: isMobile ? 'nowrap' : 'wrap', // Prevent wrapping on mobile stack
+      flexWrap: isMobile ? 'nowrap' : 'wrap',
     }}>
-      {/* Aggregation Control */}
-      <div>
+      {/* Aggregation Control - REBUILT */}
+      <div 
+        ref={dropdownRef} // Add ref to the container
+        style={{ position: 'relative' }} // Container for the absolute list
+      >
         <label htmlFor="aggregation" style={{
           display: 'block',
           marginBottom: '0.5rem',
@@ -128,10 +141,11 @@ export default function FilterPanel({ onFilterChange }: FilterPanelProps) {
         }}>
           Data Aggregation
         </label>
-        <select
+        
+        {/* This is the new "select" box, built as a button */}
+        <button
           id="aggregation"
-          value={filters.aggregationIntervalMs}
-          onChange={handleAggregationChange}
+          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
           style={{
             padding: '0.5rem',
             borderRadius: '4px',
@@ -141,18 +155,54 @@ export default function FilterPanel({ onFilterChange }: FilterPanelProps) {
             fontFamily: 'monospace',
             fontSize: '1em',
             cursor: 'pointer',
-            width: isMobile ? '100%' : 'auto', // Full width on mobile
+            width: isMobile ? '100%' : '150px', // Give it a fixed width
+            textAlign: 'left',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
           }}
         >
-          {AGGREGATION_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value} style={{ background: darkBg, color: lightText }}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+          {getSelectedLabel()}
+          <span>{isDropdownOpen ? '▲' : '▼'}</span>
+        </button>
+
+        {/* This is the new, fully-styled dropdown list */}
+        {isDropdownOpen && (
+          <div style={{
+            position: 'absolute',
+            top: '100%', // Position it right below the button
+            left: 0,
+            right: 0,
+            zIndex: 20,
+            backgroundColor: darkBg,
+            border: `1px solid ${borderColor}`,
+            borderRadius: '4px',
+            marginTop: '4px',
+            overflow: 'hidden',
+            boxShadow: `0 5px 15px rgba(0, 242, 255, 0.2)`,
+          }}>
+            {AGGREGATION_OPTIONS.map((opt) => (
+              <div 
+                key={opt.value} 
+                onClick={() => handleSelectOption(opt.value)}
+                style={{
+                  padding: '0.5rem',
+                  color: lightText,
+                  fontFamily: 'monospace',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = accentColor, e.currentTarget.style.color = darkBg)}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = darkBg, e.currentTarget.style.color = lightText)}
+              >
+                {opt.label}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Value Range Control */}
+      {/* Value Range Control (Unchanged) */}
       <div>
         <label style={{
           display: 'block',
@@ -169,7 +219,7 @@ export default function FilterPanel({ onFilterChange }: FilterPanelProps) {
           display: 'flex',
           gap: isMobile ? '1rem' : '0.5rem',
           alignItems: isMobile ? 'flex-start' : 'center',
-          flexDirection: isMobile ? 'column' : 'row', // Stack sliders on mobile
+          flexDirection: isMobile ? 'column' : 'row',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
             <span>Min:</span>
@@ -180,7 +230,7 @@ export default function FilterPanel({ onFilterChange }: FilterPanelProps) {
               value={filters.valueRange.min}
               onChange={handleMinChange}
               style={{
-                width: '100%', // Full width
+                width: '100%',
                 minWidth: '120px',
                 accentColor: accentColor,
                 cursor: 'pointer',
@@ -197,7 +247,7 @@ export default function FilterPanel({ onFilterChange }: FilterPanelProps) {
               value={filters.valueRange.max}
               onChange={handleMaxChange}
               style={{
-                width: '100%', // Full width
+                width: '100%',
                 minWidth: '120px',
                 accentColor: accentColor,
                 cursor: 'pointer',
