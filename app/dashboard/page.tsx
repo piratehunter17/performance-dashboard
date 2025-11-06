@@ -1,6 +1,5 @@
 'use client';
 
-// --- ADD THIS IMPORT ---
 import React, { useState, useMemo, useCallback, useDeferredValue, useTransition } from 'react';
 import { DataProvider, useData } from '@/components/providers/DataProvider';
 import { generateInitialDataset } from '@/lib/dataGenerator';
@@ -16,8 +15,10 @@ import DataTable from '@/components/ui/DataTable';
 import FilterPanel, { FilterState } from '@/components/controls/FilterPanel';
 import TimeRangeSelector from '@/components/controls/TimeRangeSelector';
 
+// --- Domain/View Types ---
+type ViewDomain = { min: number; max: number } | null;
+
 // --- Sub-component: Header (Composition Pattern) ---
-// Kept in the same file to avoid new files.
 function DashboardHeader({ totalPoints, displayedPoints }: { totalPoints: number; displayedPoints: number }) {
   return (
     <header className="db-header">
@@ -37,11 +38,15 @@ function DashboardControlPanel({
   onStreamToggle,
   onFilterChange,
   onTimeRangeChange,
+  onResetView,
+  hasZoom, // New prop
 }: {
   isRunning: boolean;
   onStreamToggle: () => void;
   onFilterChange: (filters: FilterState) => void;
   onTimeRangeChange: (ms: number) => void;
+  onResetView: () => void; // New prop
+  hasZoom: boolean; // New prop
 }) {
   return (
     <section className="db-control-panel">
@@ -53,32 +58,60 @@ function DashboardControlPanel({
       >
         {isRunning ? 'Pause Stream' : 'Start Stream'}
       </button>
+      {/* --- ADDED RESET ZOOM BUTTON --- */}
+      {hasZoom && (
+        <button
+          onClick={onResetView}
+          className="db-stream-button paused" // Use 'paused' style
+          style={{ width: '100%' }} // Make it full width on mobile
+        >
+          Reset Zoom
+        </button>
+      )}
     </section>
   );
 }
 
 // --- Sub-component: Chart Grid (Composition Pattern) ---
-function ChartGrid({ data, aggregationIntervalMs }: { data: DataPoint[]; aggregationIntervalMs: number }) {
+function ChartGrid({ 
+  data, 
+  viewDomain, // New prop
+  onViewChange, // New prop
+  aggregationIntervalMs 
+}: { 
+  data: DataPoint[]; 
+  viewDomain: { min: number; max: number }; // New prop
+  onViewChange: (domain: ViewDomain) => void; // New prop
+  aggregationIntervalMs: number 
+}) {
   return (
     <section className="db-chart-grid">
       <div className="db-chart-container">
-        <h2>Live Line Chart</h2>
-        <LineChart data={data} />
+        <h2>Live Line Chart (Zoomable)</h2>
+        <LineChart 
+          data={data} 
+          viewDomain={viewDomain} // Pass view state
+          onViewChange={onViewChange} // Pass callback
+        />
       </div>
       <div className="db-chart-container">
         <h2>Data Table (Virtualized)</h2>
         <DataTable data={data} />
       </div>
       <div className="db-chart-container">
-        <h2>Aggregated Bar Chart</h2>
-        <BarChart
-          data={data}
-          intervalMs={aggregationIntervalMs || 60000} // Default to 1 min if 'raw'
+        <h2>Scatter Plot (Zoomable)</h2>
+        <ScatterPlot 
+          data={data} 
+          viewDomain={viewDomain} // Pass view state
+          onViewChange={onViewChange} // Pass callback
         />
       </div>
       <div className="db-chart-container">
-        <h2>Scatter Plot</h2>
-        <ScatterPlot data={data} />
+        <h2>Aggregated Bar Chart</h2>
+        <BarChart
+          data={data}
+          intervalMs={aggregationIntervalMs || 60000} 
+        />
       </div>
       <div className="db-chart-container">
         <h2>Data Density Heatmap</h2>
@@ -97,33 +130,63 @@ function DashboardLayout() {
     aggregationIntervalMs: 0,
     valueRange: { min: 0, max: 100 },
   });
-  const [timeRangeMs, setTimeRangeMs] = useState<number>(0);
+  const [timeRangeMs, setTimeRangeMs] = useState<number>(300000); // 5 min default
   
+  // --- NEW STATE FOR ZOOM/PAN ---
+  const [viewDomain, setViewDomain] = useState<ViewDomain>(null);
+
   const [, startTransition] = useTransition();
   const deferredDataPoints = useDeferredValue(dataPoints);
 
+  // 1. Process data for the selected TIME RANGE and VALUE
   const processedData = useMemo(() => {
     const now = Date.now();
-    
     const timeFiltered = timeRangeMs === 0
       ? deferredDataPoints
       : deferredDataPoints.filter(p => p.timestamp >= (now - timeRangeMs));
-
     return timeFiltered.filter(
       p => p.value >= filters.valueRange.min && p.value <= filters.valueRange.max
     );
   }, [deferredDataPoints, filters, timeRangeMs]);
 
+  // 2. Calculate the "default" view, which is the full extent of the processed data
+  const defaultChartDomain = useMemo(() => {
+    if (processedData.length === 0) return { min: Date.now() - 1000, max: Date.now() };
+    return {
+      min: processedData[0].timestamp,
+      max: processedData[processedData.length - 1].timestamp,
+    };
+  }, [processedData]);
+
+  // 3. The "active" view is either the user's zoomed-in state (viewDomain) or the default
+  const activeView = viewDomain || defaultChartDomain;
+
+  // --- Callbacks for controls ---
+
   const handleFilterChange = useCallback((newFilters: FilterState) => {
     startTransition(() => {
       setFilters(newFilters);
+      setViewDomain(null); // Reset zoom on filter change
     });
   }, []);
 
   const handleTimeRangeChange = useCallback((ms: number) => {
     startTransition(() => {
       setTimeRangeMs(ms);
+      setViewDomain(null); // Reset zoom on time range change
     });
+  }, []);
+
+  // --- NEW CALLBACKS for Zoom/Pan ---
+
+  const handleViewChange = useCallback((newDomain: ViewDomain) => {
+    startTransition(() => {
+      setViewDomain(newDomain);
+    });
+  }, []);
+
+  const handleResetView = useCallback(() => {
+    setViewDomain(null);
   }, []);
 
   return (
@@ -140,10 +203,14 @@ function DashboardLayout() {
         onStreamToggle={isRunning ? stopStream : startStream}
         onFilterChange={handleFilterChange}
         onTimeRangeChange={handleTimeRangeChange}
+        onResetView={handleResetView} // Pass reset callback
+        hasZoom={!!viewDomain} // Pass zoom state
       />
       
       <ChartGrid 
         data={processedData} 
+        viewDomain={activeView} // Pass the active view
+        onViewChange={handleViewChange} // Pass the update callback
         aggregationIntervalMs={filters.aggregationIntervalMs} 
       />
     </main>
@@ -152,9 +219,6 @@ function DashboardLayout() {
 
 // --- Page Entry Point ---
 export default function DashboardPage() {
-  // --- THIS IS THE FIX ---
-  // By using useState with a function, this generator
-  // runs ONLY ONCE. The client will reuse the server's state.
   const [initialData] = useState(() => generateInitialDataset(1000, 100));
 
   return (
