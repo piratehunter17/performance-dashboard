@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-// --- FIX: Changed to a named import ---
 import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
 
 /**

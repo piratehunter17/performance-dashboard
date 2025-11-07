@@ -51,18 +51,12 @@ export default function FilterPanel({ onFilterChange }: FilterPanelProps) {
 
   const { isMobile } = useViewport();
 
-  // --- THIS IS THE FIX ---
-  // We must call onFilterChange when the component
-  // first loads to send the initial default state.
   useEffect(() => {
     onFilterChange({
       aggregationIntervalMs: aggregationMs,
       valueRange: valueRange,
     });
-  // We only want this to run ONCE on mount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  // --- END FIX ---
 
   // Click outside handler
   useEffect(() => {

@@ -2,9 +2,8 @@
 
 import React, { useState, useMemo, useCallback, useDeferredValue, useTransition } from 'react';
 import { DataProvider, useData } from '@/components/providers/DataProvider';
-// Note: We remove generateInitialDataset from here
-import { DataPoint } from '@/lib/types'; //
-import { FilterState } from '@/hooks/useDataStream'; //
+import { DataPoint } from '@/lib/types'; 
+import { FilterState } from '@/hooks/useDataStream'; 
 
 // Import all components
 import LineChart from '@/components/charts/LineChart';
@@ -18,7 +17,6 @@ import TimeRangeSelector from '@/components/controls/TimeRangeSelector';
 
 // --- Sub-component: Header ---
 function DashboardHeader({ totalPoints, displayedPoints }: { totalPoints: number; displayedPoints: number }) {
-  // ... (Code from your page.tsx)
   return (
     <header className="db-header">
       <h1>Real-Time Performance Dashboard</h1>
@@ -47,7 +45,6 @@ function DashboardControlPanel({
   intervalMs: number;
   onStressToggle: () => void;
 }) {
-  // ... (Code from your page.tsx)
   const isStressed = intervalMs === 16;
   return (
     <section className="db-control-panel">
@@ -80,7 +77,6 @@ function ChartGrid({
   barData: { timestamp: number; value: number }[];
   heatmapData: { grid: number[][]; maxCount: number };
 }) {
-  // ... (Code from your page.tsx)
   return (
     <section className="db-chart-grid">
       <div className="db-chart-container">
@@ -108,9 +104,7 @@ function ChartGrid({
   );
 }
 
-// --- Main Layout Component (from page.tsx) ---
 function DashboardLayout() {
-  // ... (All the state, useMemo, useCallback, etc. from your DashboardLayout)
   const { 
     dataRef,      
     dataTick,     
@@ -205,7 +199,6 @@ function DashboardLayout() {
 
 // --- Helper functions (from page.tsx) ---
 const sampleData = (data: DataPoint[], maxPoints: number): DataPoint[] => {
-  // ... (Code from your page.tsx)
   const validData = data.filter(p => p);
   if (validData.length <= maxPoints) return validData;
   const step = Math.ceil(validData.length / maxPoints);
@@ -215,7 +208,6 @@ const sampleData = (data: DataPoint[], maxPoints: number): DataPoint[] => {
 };
 
 const aggregateData = (data: DataPoint[], intervalMs: number, maxBars: number = 60): { timestamp: number, value: number }[] => {
-  // ... (Code from your page.tsx)
   if (data.length === 0 || intervalMs === 0) return [];
   const aggregated: { timestamp: number, value: number }[] = [];
   let currentBucket: { timestamp: number; sum: number; count: number } | null = null;
@@ -234,7 +226,6 @@ const aggregateData = (data: DataPoint[], intervalMs: number, maxBars: number = 
 };
 
 const binHeatmapData = (data: DataPoint[], numXBins: number = 50, numYBins: number = 10): { grid: number[][], maxCount: number } => {
-  // ... (Code from your page.tsx)
   if (data.length === 0) return { grid: [], maxCount: 0 };
   const validData = data.filter(p => p); 
   if (validData.length === 0) return { grid: [], maxCount: 0 };
@@ -260,8 +251,6 @@ const binHeatmapData = (data: DataPoint[], numXBins: number = 50, numYBins: numb
 
 // --- Page Entry Point ---
 export default function DashboardClient({ initialData }: { initialData: DataPoint[] }) {
-  // We NO LONGER call useState(generateInitialDataset)
-  // We just pass the prop to the provider.
   return (
     <DataProvider initialData={initialData}>
       <DashboardLayout />

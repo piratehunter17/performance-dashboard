@@ -1,6 +1,5 @@
 'use client';
 
-// Remove useMemo, useDeferredValue
 import React, { useRef, useState, useEffect } from 'react';
 import { DataPoint } from '@/lib/types';
 import { useChartRenderer, DrawFunction } from '@/hooks/useChartRenderer';
@@ -24,7 +23,6 @@ const useViewport = () => {
 
 type AggregatedDataPoint = { timestamp: number; value: number };
 
-// --- NEW Props: We now receive the pre-aggregated data ---
 interface BarChartProps {
   aggregatedData: AggregatedDataPoint[];
 }
@@ -33,7 +31,6 @@ const AXIS_COLOR = 'rgba(0, 242, 255, 0.2)';
 const LABEL_COLOR = '#e0e0e0';
 const BAR_COLOR = '#00f2ff';
 
-// --- Aggregation logic is REMOVED ---
 
 const drawBarChart: DrawFunction<AggregatedDataPoint> = (
   ctx,
@@ -106,18 +103,17 @@ const drawBarChart: DrawFunction<AggregatedDataPoint> = (
 };
 
 export default function BarChart({
-  aggregatedData // Use new prop
+  aggregatedData 
 }: BarChartProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   
   const { isMobile } = useViewport();
   const chartHeight = isMobile ? '250px' : '300px';
 
-  // --- ALL useMemo and useDeferredValue logic is GONE ---
 
   useChartRenderer({
     canvasRef,
-    data: aggregatedData, // Pass prop directly
+    data: aggregatedData, 
     draw: drawBarChart,
   });
 

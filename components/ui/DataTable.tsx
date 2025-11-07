@@ -5,7 +5,7 @@ import { useVirtualization } from '@/hooks/useVirtualization';
 import { DataPoint } from '@/lib/types';
 
 // --- HYDRATION-SAFE VIEWPORT HOOK ---
-// We'll use this to know when we are on the client
+// To know when we are on the client
 const useViewport = () => {
   const [width, setWidth] = useState<number | undefined>(undefined);
   useEffect(() => {
@@ -16,8 +16,6 @@ const useViewport = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
-  // --- THIS IS THE FIX ---
-  // We add 'isHydrated'
   if (width === undefined) {
     return { width: 1024, isMobile: false, isHydrated: false }; // <-- Add isHydrated
   }
@@ -48,11 +46,9 @@ export default function DataTable({ data }: { data: DataPoint[] }) {
 
   const visibleItems = data.slice(startIndex, endIndex);
 
-  // --- 2. THIS IS THE FIX ---
   // Only render the rows if the component is hydrated on the client.
   // On the server, this will be an empty array, avoiding the mismatch.
   const rowsToRender = isHydrated ? visibleItems : [];
-  // --- END FIX ---
 
   // --- Futuristic Styles ---
   const accentColor = '#00f2ff';

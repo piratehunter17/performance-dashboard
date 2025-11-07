@@ -2,12 +2,7 @@ import { generateInitialDataset } from '@/lib/dataGenerator';
 import DashboardClient from '@/components/DashboardClient';
 import { DataPoint } from '@/lib/types';
 
-// --- THIS IS THE FIX ---
-// This line tells Next.js to treat this page as a dynamic page,
-// running it on the server for every request instead of
-// just once at build time.
 export const dynamic = 'force-dynamic';
-// --- END FIX ---
 
 /**
  * This is now an async Server Component.

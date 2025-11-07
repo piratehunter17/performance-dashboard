@@ -123,7 +123,7 @@ export default function ScatterPlot({
   const { isMobile } = useViewport();
   const chartHeight = isMobile ? '250px' : '300px';
 
-  // --- LOGIC COPIED FROM LINECCHART ---
+  // --- SAME LOGIC FROM LINECHART ---
   const [viewDomain, setViewDomain] = useState<ViewDomain | null>(null);
 
   const defaultDomain = useMemo(() => {
@@ -222,7 +222,6 @@ export default function ScatterPlot({
   
   const handleZoomIn = () => zoom(0.8);
   const handleZoomOut = () => zoom(1.2);
-  // --- END LOGIC COPIED FROM LINECHART ---
 
   useChartRenderer({
     canvasRef,
@@ -284,7 +283,6 @@ export default function ScatterPlot({
         >
           +
         </button>
-        {/* This logic now correctly matches LineChart.tsx */}
         {viewDomain && (
           <button 
             onClick={handleResetView} 

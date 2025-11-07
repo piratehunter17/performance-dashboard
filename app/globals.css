@@ -40,7 +40,6 @@ a {
   text-decoration: none;
 }
 
-/* Remove the default dark mode preference, as this IS the dark mode */
 @media (prefers-color-scheme: dark) {
   html {
     color-scheme: dark;
@@ -55,7 +54,7 @@ a {
 
 .db-page-wrapper {
   padding: 1.5rem;
-  max-width: 1800px; /* Wider for pro look */
+  max-width: 1800px; 
   margin: 0 auto;
 }
 
@@ -135,9 +134,9 @@ a {
   border-radius: 8px;
   box-shadow: 0 0 15px var(--accent-glow), 0 0 10px var(--accent-glow) inset;
   
-  /* --- THIS IS THE FIX --- */
-  /* This ensures that if content (like the data table) 
-     tries to overflow, it gets cut off here, not at the body. */
+
+  /* This ensures that if content (like the data table) tries
+  to overflow, it gets cut off here, not at the body */
   overflow: hidden;
 }
 
@@ -188,10 +187,8 @@ a {
   .db-stream-button {
     height: 50px; /* Taller button for easier tapping */
   }
-  
-  /* --- THIS IS THE FIX --- */
-  /* This rule must be in the 768px query, not just 480px.
-     This stacks the charts on ALL tablets and phones. */
+
+  /* This stacks the charts on ALL tablets and phones */
   .db-chart-grid {
     grid-template-columns: 1fr;
   }

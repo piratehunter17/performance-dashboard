@@ -12,9 +12,6 @@ export type DrawFunction<T> = (
 ) => void;
 
 interface UseChartRendererOptions<T> {
-  // --- THIS IS THE FIX ---
-  // We allow the ref to be 'null', which matches
-  // the type from 'useRef<HTMLCanvasElement | null>(null)'
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   data: T[];
   draw: DrawFunction<T>;
@@ -83,7 +80,7 @@ export const useChartRenderer = <T>({
       resizeObserver.disconnect();
       cancelAnimationFrame(animationFrameIdRef.current);
     };
-  }, [canvasRef]); // Effect now correctly depends on canvasRef
+  }, [canvasRef]);
 };
 
 export default useChartRenderer;

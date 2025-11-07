@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ['latin'] })
 const spaceMono = Space_Mono({
   subsets: ['latin'],
   weight: ['400', '700'],
-  variable: '--font-space-mono', // Optional, but good practice
+  variable: '--font-space-mono', 
 })
 
 export const metadata = {

@@ -1,6 +1,5 @@
 'use client';
 
-// Remove useMemo, useDeferredValue
 import React, { useRef, useCallback, useState, useEffect, useMemo } from 'react';
 import { DataPoint } from '@/lib/types';
 import { useChartRenderer, DrawFunction } from '@/hooks/useChartRenderer';
@@ -27,7 +26,6 @@ type HeatmapGrid = {
   maxCount: number;
 };
 
-// --- NEW Props: We now receive the pre-calculated grid ---
 interface HeatmapProps {
   heatmapGrid: HeatmapGrid;
 }
@@ -124,6 +122,8 @@ const drawHeatmap = (
   }
 };
 
+// --- MAIN COMPONENT ---
+
 export default function Heatmap({
   heatmapGrid // Use new prop
 }: HeatmapProps) {
@@ -132,8 +132,6 @@ export default function Heatmap({
 
   const { isMobile } = useViewport();
   const chartHeight = isMobile ? '250px' : '300px';
-
-  // --- ALL useMemo and useDeferredValue logic is GONE ---
 
   const memoizedDraw: DrawFunction<HeatmapGrid> = useCallback((
     ctx,
@@ -146,7 +144,7 @@ export default function Heatmap({
 
   useChartRenderer({
     canvasRef,
-    data: [heatmapGrid], // Pass prop directly (in an array)
+    data: [heatmapGrid], 
     draw: memoizedDraw,
   });
 

@@ -1,93 +1,100 @@
 # High-Performance Real-Time Dashboard
 
-This project is a production-quality, real-time data visualization dashboard built to fulfill a technical assignment. The primary goal is to render **100,000+ data points** at a consistent **60fps** using a custom-built rendering engine in **Next.js 14 (App Router)** and TypeScript.
+This project is a production-quality, real-time data visualization dashboard built to fulfill a technical assignment. The primary goal is to render **100,000+ data points** at a consistent **60fps** using a custom-built rendering engine in **Next.js 16 (App Router)** and TypeScript.
 
 **No external chart libraries (e.g., D3, Chart.js) were used.** All visualizations, interactivity, and performance optimizations are built from scratch.
 
-**Live Demo:** [https://performance-dashboard-swart.vercel.app/dashboard]
-
-
-
-[Image of the futuristic dashboard UI]
+**Live Demo:** `[https://performance-dashboard-smart.vercel.app]`
 
 
 ---
 
 ## Features
 
-* **Custom Canvas Rendering:** All charts (Line, Bar, Scatter, Heatmap) are rendered on `<canvas>` using a custom `requestAnimationFrame` hook (`useChartRenderer`) for maximum performance.
-* **High-Frequency Updates:** The data stream (`useDataStream`) simulates a **60fps (16ms)** data influx, stress-testing the rendering pipeline.
+* **Custom Canvas Rendering:** All charts (Line, Bar, Scatter, Heatmap) are rendered on `<canvas>` using a custom `useChartRenderer` hook for maximum performance.
+* **Real-time Data Stream:** A Web Worker generates new data points every 100ms, processed entirely off the main thread.
 * **Advanced Interactive Controls:**
-    * **Independent Zoom/Pan:** Zoom (mousewheel/pinch) and Pan (click-drag/touch-drag) on a per-chart basis.
-    * **Data Filtering:** Filter by value range using a custom slider.
-    * **Time Range Selection:** View data in sliding windows (e.g., "Last 5 Min"), which is the primary strategy for managing large datasets.
-    * **Data Aggregation:** A custom dropdown allows data to be aggregated into time buckets (1 Min, 5 Min, etc.) for the Bar Chart.
-* **100k+ Point Scalability:** The `useDataStream` hook implements a **downsampling strategy**, allowing the dashboard to run indefinitely with stable memory by reducing the resolution of the oldest data.
-* **Virtualized Data Table:** The data table uses a custom `useVirtualization` hook to render only the visible rows, effortlessly handling 100k+ items.
+    * **Independent Zoom/Pan:** Zoom (Ctrl + mousewheel) and Pan (click-drag/touch-drag) on the Line and Scatter charts.
+    * **Data Filtering:** Filter by value range using a custom dual-slider component.
+    * **Time Range Selection:** View data in sliding windows (e.g., "Last 5 Min," "All").
+    * **Data Aggregation:** A custom dropdown aggregates data into time buckets (1 Min, 5 Min, etc.) for the Bar Chart.
+* **100k+ Point Scalability:** The data worker automatically downsamples data when the 100,000-point limit is breached, ensuring stable memory usage indefinitely.
+* **Virtualized Data Table:** The data table uses a custom `useVirtualization` hook to render only the visible rows, effortlessly handling 100,000+ items.
 * **Fully Responsive Design:** A "futuristic" UI that works on desktop, tablet, and mobile, with touch events enabled for panning.
 
 ---
 
 ## Technical Stack
 
-* **Framework:** Next.js 14 (App Router)
+* **Framework:** Next.js 16 (App Router)
 * **Language:** TypeScript
-* **Rendering:** Custom Canvas 2D API Engine
-* **State Management:** React Hooks (`useState`, `useRef`, `useMemo`, `useCallback`, `useContext`)
-* **Performance:** React Concurrent Features (`useDeferredValue`, `useTransition`)
-* **Styling:** CSS Globals with CSS Variables (for theming) and Media Queries (for responsiveness)
-
----
-
-## 🚀 Key Performance Optimizations
-
-This project's architecture is built around three core performance principles.
-
-### 1. 60fps Rendering: The `useChartRenderer` Hook
-All charts delegate their rendering to a custom `useChartRenderer` hook. This hook runs a single, centralized `requestAnimationFrame` loop, ensuring:
-* **No Unnecessary Renders:** Charts only redraw once per frame, in perfect sync with the browser's paint cycle.
-* **Efficiency:** The `draw` logic passed to the hook is highly optimized, using `useMemo` to pre-calculate expensive aggregations (for Bar/Heatmap) and sampling data (for Scatter) *before* it ever reaches the draw function.
-
-### 2. Instant UI: Concurrent React (`useDeferredValue`)
-The biggest performance bottleneck is the 60fps data stream updating the main `dataPoints` array. If this array is passed directly to the filter logic, the UI will lag.
-
-This is solved using **`useDeferredValue`** in `app/dashboard/page.tsx`:
-* The `dataPoints` array is deferred, telling React to treat data updates as a **low priority**.
-* User interactions (like dragging the value-range slider) are treated as **high priority**.
-* This allows the filter controls to remain **instantly responsive at 60fps**, even as new data floods in and the charts re-render in the background.
-
-### 3. Stable Memory: Downsampling & Virtualization
-* **Downsampling:** The `useDataStream` hook automatically downsamples the oldest 50% of the data when the 100k point limit is breached. This ensures **stable memory usage** (no leaks) and allows the application to run for hours.
-* **Virtualization:** The `useVirtualization` hook ensures the `DataTable` only renders ~20 DOM nodes, regardless of whether the dataset contains 1,000 or 1,000,000 points.
-
----
-
-## 🏗️ Next.js Architecture
-
-This project uses a **Client Component-first architecture**, which is the correct, professional choice for a stateful, real-time application.
-
-* **`app/dashboard/page.tsx` is a Client Component.** A real-time dashboard is not a static page. It is an *application*. It must use client-side state, context, and event handlers to function. Attempting to use Server Components for the core dashboard would be an incorrect application of the technology.
-* **`DataProvider` Context:** A client-side React Context (`DataProvider`) is used to provide the live data stream to all components that need it, avoiding "prop-drilling."
-* **Hydration-Safe Hooks:** All responsive components (charts, tables) use a custom, hydration-safe `useViewport` hook to prevent server/client UI mismatches and ensure smooth resizing.
+* **Rendering:** Custom Canvas 2D API Engine (from scratch)
+* **State Management:** React Hooks (`useState`, `useRef`, `useMemo`, `useCallback`) + React Context (`DataProvider.tsx`)
+* **Performance:**
+    * React Concurrent Features (`useTransition`, `useDeferredValue`)
+    * Web Worker for background data processing
+* **Styling:** CSS Globals with CSS Variables (for theming) and Media Queries
 
 ---
 
 ## 🔧 Setup & Running Locally
 
-1.  Clone the repository:
+1.  **Clone the repository:**
     ```bash
     git clone [https://github.com/piratehunter17/performance-dashboard.git](https://github.com/piratehunter17/performance-dashboard.git)
     ```
-2.  Navigate to the directory:
+2.  **Navigate to the directory:**
     ```bash
     cd performance-dashboard
     ```
-3.  Install dependencies:
+3.  **Install dependencies:**
     ```bash
     npm install
     ```
-4.  Run the development server:
+    (This will install React, Next.js, and TypeScript dependencies)
+4.  **Run the development server:**
     ```bash
     npm run dev
     ```
-5.  Open [http://localhost:3000/dashboard](http://localhost:3000/dashboard) to view the app.
+    (This starts the Next.js development server with Webpack)
+5.  **Open the app:**
+    Open [http://localhost:3000](http://localhost:3000) in your browser. You will be automatically redirected to the dashboard page.
+
+---
+
+## 🧪 Performance Testing Instructions
+
+For accurate performance metrics, run a production build:
+
+1.  **Build the application:**
+    ```bash
+    npm run build
+    ```
+2.  **Start the production server:**
+    ```bash
+    npm run start
+    ```
+3.  **Test the dashboard:**
+    * Open [http://localhost:3000](http://localhost:3000).
+    * The **FPS and Memory monitor** is visible in the bottom-right corner.
+    * Click the **"Stress Test: OFF"** button to toggle the data stream to 60 updates per second (16ms interval).
+    * Interact with the **FilterPanel** sliders and **Time Range** buttons while the stress test is active to observe the non-blocking UI (<50ms latency).
+
+---
+
+## 🚀 Next.js Specific Optimizations
+
+This project leverages modern Next.js App Router patterns for optimal performance:
+
+* **Dynamic Server-Side Rendering:** The main `app/dashboard/page.tsx` is a **Dynamic Server Component**. It uses `export const dynamic = 'force-dynamic';` to ensure the server generates a fresh `initialData` array on every request. This solves the "stale data" problem of static builds while still providing a fast, meaningful first paint.
+* **Clear Server/Client Boundaries:** The Server Component (`page.tsx`) generates the initial data and passes it as a prop to the main Client Component (`<DashboardClient />`). This is the ideal pattern, separating static generation from client-side interactivity.
+* **Optimized Font Loading:** `app/layout.tsx` uses `next/font/google` (`Space_Mono`) to automatically handle font optimization, removing external network requests and preventing layout shift.
+* **Edge Route Handlers:** The (optional) data API endpoint at `app/api/data/route.ts` is deployed to the Edge runtime (`export const runtime = 'edge';`) for the lowest possible latency.
+
+---
+
+## 🖥️ Browser Compatibility Notes
+
+* **Modern Browsers:** The dashboard is built for modern browsers (Chrome, Firefox, Safari, Edge) that support Web Workers, `requestAnimationFrame`, and `ResizeObserver`.
+* **Performance Monitor:** The memory usage display relies on the non-standard `performance.memory` API, which is **only available in Chromium-based browsers (Chrome, Edge)**. The FPS counter will work in all browsers.
+* **IE11:** Not supported.

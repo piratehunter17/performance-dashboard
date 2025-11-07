@@ -25,12 +25,6 @@ export const configureCanvasDPI = (
     // Reset the transform to prevent cumulative scaling
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
-  
-  // --- THIS IS THE FIX ---
-  // We DO NOT set canvas.style.width or canvas.style.height here.
-  // React is 100% in control of the component's style.
-  // We only read from it and update the backing store (canvas.width/height).
-  // --- END FIX ---
 
   return dpr;
 };

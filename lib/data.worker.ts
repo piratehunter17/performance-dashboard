@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-// --- 1. Types & Data Generation Logic (Copied) ---
+// --- 1. Types & Data Generation Logic ---
 
 interface DataPoint {
   timestamp: number;
@@ -76,21 +76,19 @@ const runTick = () => {
   }
 };
 
-// --- THIS IS THE FIX ---
-// Renamed 'start' to 'startStream'
+// Used to start streaming data points
 const startStream = () => {
   if (intervalId) clearInterval(intervalId);
   intervalId = setInterval(runTick, intervalMs);
   isRunning = true;
 };
 
-// Renamed 'stop' to 'stopStream'
+// Used to stop streaming data points
 const stopStream = () => {
   if (intervalId) clearInterval(intervalId);
   intervalId = null;
   isRunning = false;
 };
-// --- END FIX ---
 
 // --- 4. Worker Event Listener ---
 
@@ -101,17 +99,17 @@ self.onmessage = (e: MessageEvent) => {
     case 'INIT':
       fullData = payload.initialData;
       intervalMs = payload.intervalMs;
-      startStream(); // Use new name
+      startStream(); 
       break;
     case 'START':
-      startStream(); // Use new name
+      startStream(); 
       break;
     case 'STOP':
-      stopStream(); // Use new name
+      stopStream();
       break;
     case 'SET_INTERVAL':
       intervalMs = payload;
-      if (isRunning) startStream(); // Use new name
+      if (isRunning) startStream();
       break;
   }
 };

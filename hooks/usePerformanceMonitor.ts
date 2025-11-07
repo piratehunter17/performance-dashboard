@@ -19,7 +19,7 @@ interface PerformanceWithMemory extends Performance {
 /**
  * A custom hook to monitor FPS and memory usage.
  */
-// This is the correct NAMED export
+
 export const usePerformanceMonitor = () => {
   const [metrics, setMetrics] = useState<PerformanceMetrics>({
     fps: 0,
@@ -30,7 +30,6 @@ export const usePerformanceMonitor = () => {
   const lastTimeRef = useRef(performance.now());
   const animationFrameIdRef = useRef(0);
   
-  // --- THIS IS THE FIX ---
   // We provide 'null' as the initial value for the ref.
   const memoryIntervalIdRef = useRef<NodeJS.Timeout | null>(null);
 

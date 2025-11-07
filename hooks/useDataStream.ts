@@ -3,13 +3,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { DataPoint } from '../lib/types';
 
-// --- THIS IS THE FIX ---
 // We must export this type so page.tsx can import it.
 export type FilterState = {
   aggregationIntervalMs: number;
   valueRange: { min: number; max: number };
 };
-// --- END FIX ---
 
 export interface DataStreamControls {
   startStream: () => void;
