@@ -4,7 +4,7 @@ This project is a production-quality, real-time data visualization dashboard bui
 
 **No external chart libraries (e.g., D3, Chart.js) were used.** All visualizations, interactivity, and performance optimizations are built from scratch.
 
-**Live Demo:** `[https://performance-dashboard-smart.vercel.app]`
+**Live Demo:** https://performance-dashboard-smart.vercel.app
 
 
 ---
@@ -41,7 +41,7 @@ This project is a production-quality, real-time data visualization dashboard bui
 
 1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/piratehunter17/performance-dashboard.git](https://github.com/piratehunter17/performance-dashboard.git)
+    git clone https://github.com/piratehunter17/performance-dashboard.git
     ```
 2.  **Navigate to the directory:**
     ```bash
@@ -58,7 +58,7 @@ This project is a production-quality, real-time data visualization dashboard bui
     ```
     (This starts the Next.js development server with Webpack)
 5.  **Open the app:**
-    Open [http://localhost:3000](http://localhost:3000) in your browser. You will be automatically redirected to the dashboard page.
+    Open http://localhost:3000 in your browser. You will be automatically redirected to the dashboard page.
 
 ---
 
@@ -75,7 +75,7 @@ For accurate performance metrics, run a production build:
     npm run start
     ```
 3.  **Test the dashboard:**
-    * Open [http://localhost:3000](http://localhost:3000).
+    * Open http://localhost:3000.
     * The **FPS and Memory monitor** is visible in the bottom-right corner.
     * Click the **"Stress Test: OFF"** button to toggle the data stream to 60 updates per second (16ms interval).
     * Interact with the **FilterPanel** sliders and **Time Range** buttons while the stress test is active to observe the non-blocking UI (<50ms latency).
