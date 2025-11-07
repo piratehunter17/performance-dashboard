@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useRef, useCallback, useMemo, useState, useEffect } from 'react';
+// Remove useMemo, useDeferredValue
+import React, { useRef, useCallback, useState, useEffect, useMemo } from 'react';
 import { DataPoint } from '@/lib/types';
 import { useChartRenderer, DrawFunction } from '@/hooks/useChartRenderer';
 
@@ -8,6 +9,7 @@ import { useChartRenderer, DrawFunction } from '@/hooks/useChartRenderer';
 const useViewport = () => {
   const [width, setWidth] = useState<number | undefined>(undefined);
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const handleResize = () => setWidth(window.innerWidth);
     handleResize(); 
     window.addEventListener('resize', handleResize);
@@ -25,10 +27,9 @@ type HeatmapGrid = {
   maxCount: number;
 };
 
+// --- NEW Props: We now receive the pre-calculated grid ---
 interface HeatmapProps {
-  data: DataPoint[];
-  numXBins?: number;
-  numYBins?: number;
+  heatmapGrid: HeatmapGrid;
 }
 
 const AXIS_COLOR = 'rgba(0, 242, 255, 0.2)';
@@ -57,13 +58,14 @@ const useColorGradient = () => {
 
 const drawHeatmap = (
   ctx: CanvasRenderingContext2D,
-  heatmapData: HeatmapGrid[], 
+  heatmapData: HeatmapGrid[], // This will be an array with one item
   cssWidth: number,
   cssHeight: number,
   colorGradient: (count: number, max: number) => string
 ) => {
+  if (heatmapData.length === 0 || heatmapData[0].grid.length === 0) return;
+  
   const { grid, maxCount } = heatmapData[0]; 
-  if (!grid || grid.length === 0) return;
 
   const numXBins = grid.length;
   const numYBins = grid[0].length;
@@ -101,7 +103,7 @@ const drawHeatmap = (
   
   for (let i = 0; i <= xAxisLabelCount; i++) {
     const percent = (i / xAxisLabelCount) * 100;
-    const label = `${percent.toFixed(0)}%`; // Fix for 66.666 bug
+    const label = `${percent.toFixed(0)}%`; 
     
     const x = chartLeft + (i / xAxisLabelCount) * chartWidth;
     ctx.textAlign = 'center';
@@ -123,9 +125,7 @@ const drawHeatmap = (
 };
 
 export default function Heatmap({
-  data,
-  numXBins = 50,
-  numYBins = 10,
+  heatmapGrid // Use new prop
 }: HeatmapProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const colorGradient = useColorGradient();
@@ -133,28 +133,7 @@ export default function Heatmap({
   const { isMobile } = useViewport();
   const chartHeight = isMobile ? '250px' : '300px';
 
-  const heatmapGrid = useMemo(() => {
-    if (data.length === 0) return [{ grid: [], maxCount: 0 }];
-    const minX = data[0].timestamp;
-    const maxX = data[data.length - 1].timestamp;
-    const minY = 0;
-    const maxY = 100;
-    const grid: number[][] = Array.from({ length: numXBins }, () =>
-      Array.from({ length: numYBins }, () => 0)
-    );
-    let maxCount = 0;
-    data.forEach((point) => {
-      const xRatio = (point.timestamp - minX) / (maxX - minX);
-      const yRatio = (point.value - minY) / (maxY - minY);
-      const xBin = Math.floor(xRatio * numXBins);
-      const yBin = Math.floor(yRatio * numYBins);
-      if (xBin >= 0 && xBin < numXBins && yBin >= 0 && yBin < numYBins) {
-        grid[xBin][yBin]++;
-        maxCount = Math.max(maxCount, grid[xBin][yBin]);
-      }
-    });
-    return [{ grid, maxCount }];
-  }, [data, numXBins, numYBins]);
+  // --- ALL useMemo and useDeferredValue logic is GONE ---
 
   const memoizedDraw: DrawFunction<HeatmapGrid> = useCallback((
     ctx,
@@ -167,7 +146,7 @@ export default function Heatmap({
 
   useChartRenderer({
     canvasRef,
-    data: heatmapGrid, 
+    data: [heatmapGrid], // Pass prop directly (in an array)
     draw: memoizedDraw,
   });
 

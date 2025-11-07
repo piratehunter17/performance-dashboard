@@ -123,8 +123,9 @@ export default function ScatterPlot({
   const { isMobile } = useViewport();
   const chartHeight = isMobile ? '250px' : '300px';
 
+  // --- LOGIC COPIED FROM LINECCHART ---
   const [viewDomain, setViewDomain] = useState<ViewDomain | null>(null);
-  
+
   const defaultDomain = useMemo(() => {
     if (data.length === 0) return { min: Date.now() - 1000, max: Date.now() };
     return { min: data[0].timestamp, max: data[data.length - 1].timestamp };
@@ -172,16 +173,12 @@ export default function ScatterPlot({
     }
   };
 
-  // --- REFACTORED PAN LOGIC ---
-
-  // 1. Logic for starting a pan
   const handlePanStart = (clientX: number) => {
     isPanningRef.current = true;
     lastPanXRef.current = clientX;
     if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing';
   };
   
-  // 2. Logic for moving a pan
   const handlePanMove = (clientX: number) => {
     if (!isPanningRef.current) return;
     const { min, max } = activeView;
@@ -199,30 +196,19 @@ export default function ScatterPlot({
     handleViewChange({ min: newMin, max: newMax });
   };
   
-  // 3. Logic for ending a pan
   const handlePanEnd = () => {
     isPanningRef.current = false;
     if (canvasRef.current) canvasRef.current.style.cursor = 'grab';
   };
 
-  // 4. Mouse event handlers
   const handleMouseDown = (e: React.MouseEvent) => handlePanStart(e.clientX);
   const handleMouseMove = (e: React.MouseEvent) => handlePanMove(e.clientX);
-
-  // 5. NEW: Touch event handlers
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length > 0) {
-      e.preventDefault(); // Prevent page scroll
-      handlePanStart(e.touches[0].clientX);
-    }
+    if (e.touches.length > 0) { e.preventDefault(); handlePanStart(e.touches[0].clientX); }
   };
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length > 0) {
-      e.preventDefault(); // Prevent page scroll
-      handlePanMove(e.touches[0].clientX);
-    }
+    if (e.touches.length > 0) { e.preventDefault(); handlePanMove(e.touches[0].clientX); }
   };
-  // --- END REFACTOR ---
 
   const zoom = (factor: number) => {
     const { min, max } = activeView;
@@ -236,9 +222,11 @@ export default function ScatterPlot({
   
   const handleZoomIn = () => zoom(0.8);
   const handleZoomOut = () => zoom(1.2);
+  // --- END LOGIC COPIED FROM LINECHART ---
 
   useChartRenderer({
     canvasRef,
+    // We pass the required props for the scatter draw function
     data: [{ data, viewDomain: activeView, pointSize, pointColor }],
     draw: drawScatterPlot,
   });
@@ -296,6 +284,7 @@ export default function ScatterPlot({
         >
           +
         </button>
+        {/* This logic now correctly matches LineChart.tsx */}
         {viewDomain && (
           <button 
             onClick={handleResetView} 
@@ -315,14 +304,13 @@ export default function ScatterPlot({
           height: '100%', 
           display: 'block',
           cursor: 'grab',
-          touchAction: 'none', // Prevents default touch actions
+          touchAction: 'none',
         }}
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handlePanEnd}
         onMouseLeave={handlePanEnd}
-        // --- ADDED TOUCH HANDLERS ---
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handlePanEnd}

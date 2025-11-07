@@ -2,93 +2,72 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { DataPoint } from '../lib/types';
-import { generateNewDataPoint } from '../lib/dataGenerator';
 
-// --- NEW STRATEGY ---
-const MAX_DATA_POINTS = 100000; // Hit the 100k Stretch Goal
-const DOWNSAMPLE_TARGET = 50000; // When we downsample, aim for this
-
-/**
- * High-performance downsampling.
- * Replaces the oldest half of the data with
- * a new array that is 1/2 its size (by averaging pairs).
- */
-const downsample = (data: DataPoint[]): DataPoint[] => {
-  // Keep the newest 50% of data untouched
-  // We'll downsample the older 50%
-  const cutoff = Math.floor(data.length * 0.5);
-  const recentData = data.slice(cutoff);
-  const oldData = data.slice(0, cutoff);
-  
-  const downsampledOldData: DataPoint[] = [];
-
-  for (let i = 0; i < oldData.length; i += 2) {
-    if (i + 1 < oldData.length) {
-      const p1 = oldData[i];
-      const p2 = oldData[i + 1];
-      // Create a new point by averaging the two old ones
-      downsampledOldData.push({
-        timestamp: p2.timestamp, // Use the newer timestamp
-        value: (p1.value + p2.value) / 2, // Average the value
-      });
-    } else {
-      // Keep the last odd point if it exists
-      downsampledOldData.push(oldData[i]);
-    }
-  }
-  
-  // Return the combined array
-  return [...downsampledOldData, ...recentData];
+// --- THIS IS THE FIX ---
+// We must export this type so page.tsx can import it.
+export type FilterState = {
+  aggregationIntervalMs: number;
+  valueRange: { min: number; max: number };
 };
+// --- END FIX ---
+
+export interface DataStreamControls {
+  startStream: () => void;
+  stopStream: () => void;
+  setIntervalMs: (ms: number) => void;
+}
 
 export const useDataStream = (
-  initialData: DataPoint[],
-  intervalMs: number
-) => {
-  const [dataPoints, setDataPoints] = useState<DataPoint[]>(initialData);
-  const [isRunning, setIsRunning] = useState<boolean>(true);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  initialData: DataPoint[]
+): {
+  dataRef: React.RefObject<DataPoint[]>;
+  dataTick: number;
+  isRunning: boolean;
+} & DataStreamControls => {
+  
+  const [dataTick, setDataTick] = useState(0); 
+  const dataRef = useRef<DataPoint[]>(initialData); 
+  
+  const [isRunning, setIsRunning] = useState(true);
+  const workerRef = useRef<Worker | null>(null);
 
   useEffect(() => {
-    if (isRunning) {
-      intervalRef.current = setInterval(() => {
-        const newDataPoint = generateNewDataPoint();
+    const worker = new Worker(new URL('../lib/data.worker.ts', import.meta.url));
+    workerRef.current = worker;
 
-        setDataPoints((currentData) => {
-          // --- THIS IS THE NEW LOGIC ---
-          // 1. Check if we're over the max
-          if (currentData.length >= MAX_DATA_POINTS) {
-            // 2. If so, downsample and add the new point
-            const downsampledData = downsample(currentData);
-            return [...downsampledData, newDataPoint];
-          }
-          
-          // 3. Otherwise, just add the new point
-          return [...currentData, newDataPoint];
-        });
-      }, intervalMs);
-    } else if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
+    worker.onmessage = (e: MessageEvent<DataPoint[]>) => {
+      // 1. Save the 100k array to the ref
+      dataRef.current = e.data;
+      // 2. Increment the tick to trigger a re-render
+      setDataTick(tick => tick + 1); 
+    };
+    
+    // Send the initial data and interval
+    worker.postMessage({ 
+      type: 'INIT', 
+      payload: { initialData, intervalMs: 100 }
+    });
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      worker.terminate();
     };
-  }, [isRunning, intervalMs]);
+  }, [initialData]); // Run once
+
+  // --- Worker Control Functions ---
 
   const startStream = useCallback(() => {
+    workerRef.current?.postMessage({ type: 'START' });
     setIsRunning(true);
   }, []);
 
   const stopStream = useCallback(() => {
+    workerRef.current?.postMessage({ type: 'STOP' });
     setIsRunning(false);
   }, []);
 
-  return { dataPoints, isRunning, startStream, stopStream };
-};
+  const setIntervalMs = useCallback((ms: number) => {
+    workerRef.current?.postMessage({ type: 'SET_INTERVAL', payload: ms });
+  }, []);
 
-// --- REMOVED THE DEFAULT EXPORT ---
-// This was causing runtime errors
+  return { dataRef, dataTick, isRunning, startStream, stopStream, setIntervalMs };
+};

@@ -5,6 +5,7 @@ import { useVirtualization } from '@/hooks/useVirtualization';
 import { DataPoint } from '@/lib/types';
 
 // --- HYDRATION-SAFE VIEWPORT HOOK ---
+// We'll use this to know when we are on the client
 const useViewport = () => {
   const [width, setWidth] = useState<number | undefined>(undefined);
   useEffect(() => {
@@ -14,22 +15,24 @@ const useViewport = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+  
+  // --- THIS IS THE FIX ---
+  // We add 'isHydrated'
   if (width === undefined) {
-    return { width: 1024, isMobile: false }; 
+    return { width: 1024, isMobile: false, isHydrated: false }; // <-- Add isHydrated
   }
-  return { width, isMobile: width < 768 };
+  return { width, isMobile: width < 768, isHydrated: true }; // <-- Add isHydrated
 };
 // --- END HOOK ---
 
 export default function DataTable({ data }: { data: DataPoint[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   
-  const { isMobile } = useViewport();
+  // --- 1. Get the 'isHydrated' flag ---
+  const { isMobile, isHydrated } = useViewport();
   
   const rowHeight = isMobile ? 60 : 30;
   const tableHeight = isMobile ? '300px' : '340px';
-
-  // --- Auto-scrolling state and handlers REMOVED ---
 
   const { startIndex, endIndex, totalHeight } = useVirtualization({
     itemHeight: rowHeight,
@@ -37,18 +40,19 @@ export default function DataTable({ data }: { data: DataPoint[] }) {
     containerRef: containerRef,
   });
 
-  // --- THIS IS THE FIX ---
-  // This effect now *only* watches the 'data' array.
-  // When new data arrives (changing the array), it
-  // *always* scrolls the container to the very bottom.
   useEffect(() => {
     if (containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
-  }, [data]); // Run when 'data' prop changes
-  // --- END FIX ---
+  }, [data]);
 
   const visibleItems = data.slice(startIndex, endIndex);
+
+  // --- 2. THIS IS THE FIX ---
+  // Only render the rows if the component is hydrated on the client.
+  // On the server, this will be an empty array, avoiding the mismatch.
+  const rowsToRender = isHydrated ? visibleItems : [];
+  // --- END FIX ---
 
   // --- Futuristic Styles ---
   const accentColor = '#00f2ff';
@@ -85,7 +89,6 @@ export default function DataTable({ data }: { data: DataPoint[] }) {
       
       <div
         ref={containerRef}
-        // onScroll handler REMOVED
         style={{
           height: tableHeight, 
           overflowY: 'auto',
@@ -96,12 +99,13 @@ export default function DataTable({ data }: { data: DataPoint[] }) {
       >
         <div style={{ height: `${totalHeight}px`, width: '100%' }}>
           
-          {visibleItems.map((item, index) => {
+          {/* 3. Render the safe array */}
+          {rowsToRender.map((item, index) => {
             const rowIndex = startIndex + index;
             
             return (
               <div
-                key={item.timestamp}
+                key={item.timestamp} // Make sure timestamps are unique
                 style={{
                   position: 'absolute',
                   top: `${rowIndex * rowHeight}px`,

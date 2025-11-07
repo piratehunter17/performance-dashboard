@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useRef, useCallback, useMemo, useState, useEffect } from 'react';
+// Remove useMemo, useDeferredValue
+import React, { useRef, useState, useEffect } from 'react';
 import { DataPoint } from '@/lib/types';
 import { useChartRenderer, DrawFunction } from '@/hooks/useChartRenderer';
 
@@ -8,6 +9,7 @@ import { useChartRenderer, DrawFunction } from '@/hooks/useChartRenderer';
 const useViewport = () => {
   const [width, setWidth] = useState<number | undefined>(undefined);
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const handleResize = () => setWidth(window.innerWidth);
     handleResize(); 
     window.addEventListener('resize', handleResize);
@@ -22,46 +24,16 @@ const useViewport = () => {
 
 type AggregatedDataPoint = { timestamp: number; value: number };
 
+// --- NEW Props: We now receive the pre-aggregated data ---
 interface BarChartProps {
-  data: DataPoint[];
-  intervalMs?: number; 
-  maxBars?: number;
+  aggregatedData: AggregatedDataPoint[];
 }
 
 const AXIS_COLOR = 'rgba(0, 242, 255, 0.2)';
 const LABEL_COLOR = '#e0e0e0';
 const BAR_COLOR = '#00f2ff';
 
-const aggregateData = (data: DataPoint[], intervalMs: number, maxBars: number) => {
-  if (data.length === 0) return [];
-  const aggregated: AggregatedDataPoint[] = [];
-  let currentBucket: { timestamp: number; sum: number; count: number } | null = null;
-  for (let i = 0; i < data.length; i++) {
-    const point = data[i];
-    const bucketStart = Math.floor(point.timestamp / intervalMs) * intervalMs;
-    if (!currentBucket || currentBucket.timestamp !== bucketStart) {
-      if (currentBucket) {
-        aggregated.push({
-          timestamp: currentBucket.timestamp,
-          value: currentBucket.sum / currentBucket.count,
-        });
-      }
-      currentBucket = { timestamp: bucketStart, sum: 0, count: 0 };
-    }
-    currentBucket.sum += point.value;
-    currentBucket.count++;
-  }
-  if (currentBucket) {
-    aggregated.push({
-      timestamp: currentBucket.timestamp,
-      value: currentBucket.sum / currentBucket.count,
-    });
-  }
-  if (aggregated.length > maxBars) {
-    return aggregated.slice(aggregated.length - maxBars);
-  }
-  return aggregated;
-};
+// --- Aggregation logic is REMOVED ---
 
 const drawBarChart: DrawFunction<AggregatedDataPoint> = (
   ctx,
@@ -74,8 +46,8 @@ const drawBarChart: DrawFunction<AggregatedDataPoint> = (
   const mobilePadding = cssWidth < 480 ? 20 : 40;
   const padding = cssWidth < 768 ? mobilePadding : 40;
   const yAxisLabelCount = cssWidth < 480 ? 3 : 5;
-  const xAxisLabelCount = cssWidth < 480 ? 3 : 5; // <-- ADDED
-  const fontSize = cssWidth < 480 ? '10px monospace' : '12px monospace'; // <-- ADDED
+  const xAxisLabelCount = cssWidth < 480 ? 3 : 5;
+  const fontSize = cssWidth < 480 ? '10px monospace' : '12px monospace';
   
   const minX = aggregatedData[0].timestamp;
   const intervalMs = aggregatedData.length > 1 ? aggregatedData[1].timestamp - aggregatedData[0].timestamp : 60000;
@@ -103,25 +75,21 @@ const drawBarChart: DrawFunction<AggregatedDataPoint> = (
   ctx.fillStyle = LABEL_COLOR;
   ctx.font = fontSize;
 
-  // Y-Axis Labels
   for (let i = 0; i <= yAxisLabelCount; i++) {
     const value = minY + (maxY - minY) * (i / yAxisLabelCount);
     ctx.fillText(value.toFixed(0), chartLeft - padding + 10, mapY(value) + 3);
   }
   
-  // --- THIS IS THE FIX: X-Axis Labels ---
   for (let i = 0; i <= xAxisLabelCount; i++) {
     const dataIndex = Math.floor((aggregatedData.length - 1) * (i / xAxisLabelCount));
     const point = aggregatedData[dataIndex];
-    
     if (point) {
-      const x = mapX(point.timestamp + intervalMs / 2); // Center label
+      const x = mapX(point.timestamp + intervalMs / 2);
       ctx.textAlign = 'center';
       ctx.fillText(new Date(point.timestamp).toLocaleTimeString(), x, chartTop + chartHeight + 20);
     }
   }
-  ctx.textAlign = 'left'; // Reset
-  // --- END FIX ---
+  ctx.textAlign = 'left';
   
   ctx.fillStyle = BAR_COLOR;
   const barPadding = 0.1;
@@ -138,22 +106,18 @@ const drawBarChart: DrawFunction<AggregatedDataPoint> = (
 };
 
 export default function BarChart({
-  data,
-  intervalMs = 60000,
-  maxBars = 60
+  aggregatedData // Use new prop
 }: BarChartProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   
   const { isMobile } = useViewport();
   const chartHeight = isMobile ? '250px' : '300px';
 
-  const aggregatedData = useMemo(() => {
-    return aggregateData(data, intervalMs, maxBars);
-  }, [data, intervalMs, maxBars]);
+  // --- ALL useMemo and useDeferredValue logic is GONE ---
 
   useChartRenderer({
     canvasRef,
-    data: aggregatedData,
+    data: aggregatedData, // Pass prop directly
     draw: drawBarChart,
   });
 

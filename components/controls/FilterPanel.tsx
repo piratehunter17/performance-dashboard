@@ -1,6 +1,5 @@
 'use client';
 
-// Added 'useRef' to detect clicks outside the dropdown
 import React, { useState, useEffect, useRef } from 'react';
 
 // --- HYDRATION-SAFE VIEWPORT HOOK ---
@@ -30,7 +29,7 @@ export interface FilterState {
 
 // Define the component's props
 interface FilterPanelProps {
-  onFilterChange: (filters: FilterState) => void;
+  onFilterChange: (filters: Partial<FilterState>) => void; // Use Partial
 }
 
 // Define the aggregation options
@@ -42,24 +41,30 @@ const AGGREGATION_OPTIONS = [
 ];
 
 export default function FilterPanel({ onFilterChange }: FilterPanelProps) {
-  const [filters, setFilters] = useState<FilterState>({
-    aggregationIntervalMs: 0, // Default to raw data
-    valueRange: { min: 0, max: 100 }, // Default to full range
-  });
-  
-  // --- NEW STATE for the custom dropdown ---
+  // --- Local state for inputs ---
+  // --- FIX: Default aggregation to 1 Min Avg ---
+  const [aggregationMs, setAggregationMs] = useState(60000); 
+  const [valueRange, setValueRange] = useState({ min: 0, max: 100 });
+
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null); // Ref for click-outside
-  // ---
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const { isMobile } = useViewport(); // Use the safe hook
+  const { isMobile } = useViewport();
 
-  // This effect calls the 'onFilterChange' callback
+  // --- THIS IS THE FIX ---
+  // We must call onFilterChange when the component
+  // first loads to send the initial default state.
   useEffect(() => {
-    onFilterChange(filters);
-  }, [filters, onFilterChange]);
+    onFilterChange({
+      aggregationIntervalMs: aggregationMs,
+      valueRange: valueRange,
+    });
+  // We only want this to run ONCE on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // --- END FIX ---
 
-  // --- NEW: Click outside handler ---
+  // Click outside handler
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -71,36 +76,28 @@ export default function FilterPanel({ onFilterChange }: FilterPanelProps) {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [dropdownRef]);
-  // ---
-
-  // --- NEW: Handlers for custom dropdown ---
+  
+  // Handlers now call onFilterChange
   const handleSelectOption = (value: number) => {
-    setFilters((prev) => ({
-      ...prev,
-      aggregationIntervalMs: value,
-    }));
-    setIsDropdownOpen(false); // Close dropdown on select
+    setAggregationMs(value);
+    onFilterChange({ aggregationIntervalMs: value });
+    setIsDropdownOpen(false);
   };
   
   const getSelectedLabel = () => {
-    return AGGREGATION_OPTIONS.find(opt => opt.value === filters.aggregationIntervalMs)?.label;
+    return AGGREGATION_OPTIONS.find(opt => opt.value === aggregationMs)?.label;
   };
-  // ---
 
   const handleMinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newMin = Math.min(Number(e.target.value), filters.valueRange.max);
-    setFilters((prev) => ({
-      ...prev,
-      valueRange: { ...prev.valueRange, min: newMin },
-    }));
+    const newMin = Math.min(Number(e.target.value), valueRange.max);
+    setValueRange(prev => ({ ...prev, min: newMin }));
+    onFilterChange({ valueRange: { min: newMin, max: valueRange.max } });
   };
 
   const handleMaxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newMax = Math.max(Number(e.target.value), filters.valueRange.min);
-    setFilters((prev) => ({
-      ...prev,
-      valueRange: { ...prev.valueRange, max: newMax },
-    }));
+    const newMax = Math.max(Number(e.target.value), valueRange.min);
+    setValueRange(prev => ({ ...prev, max: newMax }));
+    onFilterChange({ valueRange: { min: valueRange.min, max: newMax } });
   };
 
   // --- Futuristic Styles ---
@@ -125,10 +122,10 @@ export default function FilterPanel({ onFilterChange }: FilterPanelProps) {
       alignItems: isMobile ? 'stretch' : 'center',
       flexWrap: isMobile ? 'nowrap' : 'wrap',
     }}>
-      {/* Aggregation Control - REBUILT */}
+      {/* Aggregation Control */}
       <div 
-        ref={dropdownRef} // Add ref to the container
-        style={{ position: 'relative' }} // Container for the absolute list
+        ref={dropdownRef}
+        style={{ position: 'relative' }}
       >
         <label htmlFor="aggregation" style={{
           display: 'block',
@@ -142,7 +139,6 @@ export default function FilterPanel({ onFilterChange }: FilterPanelProps) {
           Data Aggregation
         </label>
         
-        {/* This is the new "select" box, built as a button */}
         <button
           id="aggregation"
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -155,7 +151,7 @@ export default function FilterPanel({ onFilterChange }: FilterPanelProps) {
             fontFamily: 'monospace',
             fontSize: '1em',
             cursor: 'pointer',
-            width: isMobile ? '100%' : '150px', // Give it a fixed width
+            width: isMobile ? '100%' : '150px',
             textAlign: 'left',
             display: 'flex',
             justifyContent: 'space-between',
@@ -166,11 +162,10 @@ export default function FilterPanel({ onFilterChange }: FilterPanelProps) {
           <span>{isDropdownOpen ? '▲' : '▼'}</span>
         </button>
 
-        {/* This is the new, fully-styled dropdown list */}
         {isDropdownOpen && (
           <div style={{
             position: 'absolute',
-            top: '100%', // Position it right below the button
+            top: '100%',
             left: 0,
             right: 0,
             zIndex: 20,
@@ -202,7 +197,7 @@ export default function FilterPanel({ onFilterChange }: FilterPanelProps) {
         )}
       </div>
 
-      {/* Value Range Control (Unchanged) */}
+      {/* Value Range Control */}
       <div>
         <label style={{
           display: 'block',
@@ -213,7 +208,7 @@ export default function FilterPanel({ onFilterChange }: FilterPanelProps) {
           textTransform: 'uppercase',
           letterSpacing: '0.5px',
         }}>
-          Value Range ({filters.valueRange.min} - {filters.valueRange.max})
+          Value Range ({valueRange.min} - {valueRange.max})
         </label>
         <div style={{
           display: 'flex',
@@ -227,7 +222,7 @@ export default function FilterPanel({ onFilterChange }: FilterPanelProps) {
               type="range"
               min="0"
               max="100"
-              value={filters.valueRange.min}
+              value={valueRange.min}
               onChange={handleMinChange}
               style={{
                 width: '100%',
@@ -244,7 +239,7 @@ export default function FilterPanel({ onFilterChange }: FilterPanelProps) {
               type="range"
               min="0"
               max="100"
-              value={filters.valueRange.max}
+              value={valueRange.max}
               onChange={handleMaxChange}
               style={{
                 width: '100%',

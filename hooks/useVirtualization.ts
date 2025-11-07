@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+// 1. Import 'useCallback' and 'useMemo'
+import { useState, useEffect, useCallback, useMemo } from 'react';
+// 2. Import 'throttle'
+import { throttle } from '@/lib/performanceUtils';
 
 interface VirtualizationOptions {
   itemHeight: number;
   itemCount: number;
-  // --- THIS IS THE FIX ---
-  // We change HTMLElement to HTMLElement | null
-  // to match the type provided by useRef(null).
   containerRef: React.RefObject<HTMLElement | null>;
-  overscan?: number; // Number of items to render outside the viewport
+  overscan?: number;
 }
 
 interface VirtualizationRange {
@@ -29,7 +29,7 @@ export const useVirtualization = ({
   const [scrollTop, setScrollTop] = useState(0);
   const [containerHeight, setContainerHeight] = useState(0);
 
-  // Function to update dimensions and scroll
+  // 3. Wrap the 'update' function in useCallback
   const update = useCallback(() => {
     if (containerRef.current) {
       setScrollTop(containerRef.current.scrollTop);
@@ -37,30 +37,35 @@ export const useVirtualization = ({
     }
   }, [containerRef]);
 
-  // Run on mount to get initial container height
+  // Run on mount to get initial height
   useEffect(() => {
     update();
   }, [update]);
   
+  // 4. Create a throttled version of 'update'
+  //    This will only run, at most, once every 16ms (~60fps)
+  const throttledUpdate = useMemo(() => {
+    return throttle(update, 16);
+  }, [update]);
+  
   // Attach scroll and resize listeners
   useEffect(() => {
-    // We must check if current is null
     const container = containerRef.current;
     if (!container) return;
 
-    // Listen for scrolls
-    container.addEventListener('scroll', update, { passive: true });
+    // 5. Use the new 'throttledUpdate' for the scroll listener
+    container.addEventListener('scroll', throttledUpdate, { passive: true });
     
-    // Listen for resizes
+    // ResizeObserver is already efficient, 'update' is fine here
     const resizeObserver = new ResizeObserver(update);
     resizeObserver.observe(container);
 
     // Cleanup
     return () => {
-      container.removeEventListener('scroll', update);
+      container.removeEventListener('scroll', throttledUpdate);
       resizeObserver.disconnect();
     };
-  }, [containerRef, update]);
+  }, [containerRef, throttledUpdate, update]); // Add dependencies
 
   // Calculate the virtual range
   const totalHeight = itemCount * itemHeight;

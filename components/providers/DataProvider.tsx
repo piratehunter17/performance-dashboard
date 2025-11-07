@@ -1,44 +1,48 @@
 'use client'; 
 
-import React, { createContext, useContext, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode, useState, useCallback } from 'react';
 import { DataPoint } from '@/lib/types';
-// --- FIX: Changed to a named import ---
-import { useDataStream } from '@/hooks/useDataStream';
+import { useDataStream, DataStreamControls } from '@/hooks/useDataStream';
 
-// 1. Define the shape of the data our context will provide
-interface DataContextState {
-  dataPoints: DataPoint[];
+interface DataContextState extends DataStreamControls {
+  dataRef: React.RefObject<DataPoint[]>;
+  dataTick: number;
   isRunning: boolean;
-  startStream: () => void;
-  stopStream: () => void;
+  intervalMs: number;
 }
 
-// 2. Create the Context
 const DataContext = createContext<DataContextState | undefined>(undefined);
 
-// 3. Define the Provider component
 interface DataProviderProps {
   initialData: DataPoint[];
   children: ReactNode;
 }
 
-/**
- * Provides the real-time data stream to its children components.
- */
 export const DataProvider: React.FC<DataProviderProps> = ({
   initialData,
   children,
 }) => {
-  const dataStream = useDataStream(initialData, 16); // 16ms interval (60fps)
+  const [intervalMs, setIntervalMs] = useState(100);
+  const dataStream = useDataStream(initialData);
+
+  const setAppInterval = useCallback((newInterval: number) => {
+    setIntervalMs(newInterval);
+    dataStream.setIntervalMs(newInterval);
+  }, [dataStream.setIntervalMs]);
 
   return (
-    <DataContext.Provider value={dataStream}>
+    <DataContext.Provider 
+      value={{ 
+        ...dataStream, 
+        intervalMs, 
+        setIntervalMs: setAppInterval
+      }}
+    >
       {children}
     </DataContext.Provider>
   );
 };
 
-// 4. Create a custom consumer hook for easy access
 export const useData = (): DataContextState => {
   const context = useContext(DataContext);
   if (context === undefined) {
