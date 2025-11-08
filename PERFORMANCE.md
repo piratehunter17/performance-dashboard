@@ -59,8 +59,13 @@ For this real-time application, a static build (`SSG`) is unsuitable, as the ini
 
 The architecture correctly separates concerns:
 
-1.  **`app/dashboard/page.tsx` (Server Component):** Handles the initial data generation.
+1.  **`app/dashboard/page.tsx` (Server Component):** Handles the initial data generation and simulation of a slow data fetch.
 2.  **`components/DashboardClient.tsx` (Client Component):** Receives the initial data and manages all client-side logic: state, interactivity, and data stream management.
+
+### Streaming UI with `loading.tsx`
+
+* **Implementation:** The project uses `app/dashboard/loading.tsx` to implement Next.js's file-based streaming.
+* **Benefit:** An animated skeleton UI is streamed to the client *immediately*, providing an instant response. This skeleton is displayed while the `page.tsx` Server Component is running (simulating its 1.5-second data fetch). This prevents the user from seeing a blank white page and demonstrates a robust production-ready loading experience.
 
 This approach minimizes the amount of JavaScript sent to the client while providing a rich, interactive experience.
 
@@ -68,13 +73,15 @@ This approach minimizes the amount of JavaScript sent to the client while provid
 
 ## 4. 🎨 Canvas Integration Strategy
 
-The core strategy is to **keep React in control of state, and Canvas in control of pixels.**
+The core strategy is to **keep React in control of state, and Canvas in control of pixels,** while **aggressively avoiding DOM reads (reflows) in the render loop.**
 
-* **Centralized Render Engine:** The `useChartRenderer` hook is the "engine" for all charts. It encapsulates the `requestAnimationFrame` loop, ensuring drawing logic is perfectly synced with the browser's paint cycle and never runs more than once per frame.
-* **React-Safe DPI & Resize Handling:** `lib/canvasUtils.ts` contains a critical function, `configureCanvasDPI`. This function safely handles HiDPI (Retina) scaling and resizing.
-    * It reads the canvas's CSS size (which is controlled by React and CSS) from `canvas.getBoundingClientRect()`.
-    * It then updates the canvas's *backing store* (`canvas.width` and `canvas.height`) to match, scaled by `devicePixelRatio`.
-    * This one-way data flow prevents conflicts where React and the DOM fight for control over the canvas's style.
+* **Centralized Render Engine:** The `useChartRenderer` hook is the "engine" for all charts. It encapsulates the `requestAnimationFrame` loop, ensuring drawing logic is perfectly synced with the browser's paint cycle.
+* **Layout Thrashing Prevention:** This is the most important canvas optimization.
+    1.  A **`ResizeObserver`** is used to detect when the canvas *actually* resizes.
+    2.  When a resize is detected, we call `canvas.getBoundingClientRect()` *once* inside the observer's callback.
+    3.  The new dimensions and the `devicePixelRatio` are cached in `useRef`s.
+    4.  The `requestAnimationFrame` loop **only reads from these cached refs** to perform scaling and clearing. It **never** reads from the DOM.
+* **Benefit:** This completely prevents **layout thrashing**, where the browser is forced to recalculate layout 60 times per second. By separating "layout reads" (in the `ResizeObserver`) from "drawing" (in the `requestAnimationFrame`), we guarantee a smooth 60fps render.
 * **Optimized Draw Calls:** Expensive calculations (like data sampling or aggregation) happen inside `useMemo` in React *before* the data is passed to the draw function. The `draw` function itself is kept as simple as possible. For example, `ScatterPlot.tsx` uses `ctx.fillRect` instead of the more expensive `ctx.arc` to render thousands of points.
 
 ---

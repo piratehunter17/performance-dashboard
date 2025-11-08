@@ -12,6 +12,7 @@ This project is a production-quality, real-time data visualization dashboard bui
 ## Features
 
 * **Custom Canvas Rendering:** All charts (Line, Bar, Scatter, Heatmap) are rendered on `<canvas>` using a custom `useChartRenderer` hook for maximum performance.
+* **Streaming UI Skeleton:** The dashboard features an animated shimmer skeleton loader (`app/dashboard/loading.tsx`), demonstrating Next.js 14's streaming capabilities.
 * **Real-time Data Stream:** A Web Worker generates new data points every 100ms, processed entirely off the main thread.
 * **Advanced Interactive Controls:**
     * **Independent Zoom/Pan:** Zoom (Ctrl + mousewheel) and Pan (click-drag/touch-drag) on the Line and Scatter charts.
@@ -75,7 +76,7 @@ For accurate performance metrics, run a production build:
     npm run start
     ```
 3.  **Test the dashboard:**
-    * Open http://localhost:3000.
+    * Open http://localhost:3000. The animated loading skeleton will appear first, simulating a data fetch.
     * The **FPS and Memory monitor** is visible in the bottom-right corner.
     * Click the **"Stress Test: OFF"** button to toggle the data stream to 60 updates per second (16ms interval).
     * Interact with the **FilterPanel** sliders and **Time Range** buttons while the stress test is active to observe the non-blocking UI (<50ms latency).
@@ -87,6 +88,7 @@ For accurate performance metrics, run a production build:
 This project leverages modern Next.js App Router patterns for optimal performance:
 
 * **Dynamic Server-Side Rendering:** The main `app/dashboard/page.tsx` is a **Dynamic Server Component**. It uses `export const dynamic = 'force-dynamic';` to ensure the server generates a fresh `initialData` array on every request. This solves the "stale data" problem of static builds while still providing a fast, meaningful first paint.
+* **Streaming UI with `loading.tsx`:** The app uses `app/dashboard/loading.tsx` to immediately stream an animated skeleton UI to the client. This provides an instant response while the main `page.tsx` component performs its initial data generation on the server.
 * **Clear Server/Client Boundaries:** The Server Component (`page.tsx`) generates the initial data and passes it as a prop to the main Client Component (`<DashboardClient />`). This is the ideal pattern, separating static generation from client-side interactivity.
 * **Optimized Font Loading:** `app/layout.tsx` uses `next/font/google` (`Space_Mono`) to automatically handle font optimization, removing external network requests and preventing layout shift.
 * **Edge Route Handlers:** The (optional) data API endpoint at `app/api/data/route.ts` is deployed to the Edge runtime (`export const runtime = 'edge';`) for the lowest possible latency.
