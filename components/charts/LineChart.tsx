@@ -4,7 +4,7 @@ import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react'
 import { DataPoint } from '@/lib/types';
 import { useChartRenderer, DrawFunction } from '@/hooks/useChartRenderer';
 
-// --- HYDRATION-SAFE VIEWPORT HOOK ---
+// Hydration-safe viewport hook
 const useViewport = () => {
   const [width, setWidth] = useState<number | undefined>(undefined);
   useEffect(() => {
@@ -15,11 +15,11 @@ const useViewport = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   if (width === undefined) {
-    return { width: 1024, isMobile: false }; 
+    return { width: 1024, isMobile: false, isHydrated: false };
   }
-  return { width, isMobile: width < 768 };
+  return { width, isMobile: width < 768, isHydrated: true };
 };
-// --- END HOOK ---
+// End of viewport hook
 
 type ViewDomain = { min: number; max: number };
 interface LineChartProps {
@@ -114,8 +114,12 @@ const drawLineChart: DrawFunction<{data: DataPoint[], viewDomain: ViewDomain}> =
 
 export default function LineChart({ data }: LineChartProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const { isMobile } = useViewport();
-  const chartHeight = isMobile ? '300px' : '400px';
+  
+  // Hydration-safe height fallback
+  const { isMobile, isHydrated } = useViewport();
+  const defaultHeight = '400px'; // Server-rendered height
+  const chartHeight = isHydrated ? (isMobile ? '300px' : '400px') : defaultHeight;
+  // End hydration fallback
 
   const [viewDomain, setViewDomain] = useState<ViewDomain | null>(null);
 
@@ -167,17 +171,13 @@ export default function LineChart({ data }: LineChartProps) {
       handleViewChange({ min: newMin, max: newMax });
     }
   };
-
-  // --- REFACTORED PAN LOGIC ---
   
-  // 1. Logic for starting a pan
   const handlePanStart = (clientX: number) => {
     isPanningRef.current = true;
     lastPanXRef.current = clientX;
     if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing';
   };
 
-  // 2. Logic for moving a pan
   const handlePanMove = (clientX: number) => {
     if (!isPanningRef.current) return;
     const { min, max } = activeView;
@@ -195,30 +195,26 @@ export default function LineChart({ data }: LineChartProps) {
     handleViewChange({ min: newMin, max: newMax });
   };
   
-  // 3. Logic for ending a pan
   const handlePanEnd = () => {
     isPanningRef.current = false;
     if (canvasRef.current) canvasRef.current.style.cursor = 'grab';
   };
 
-  // 4. Mouse event handlers
   const handleMouseDown = (e: React.MouseEvent) => handlePanStart(e.clientX);
   const handleMouseMove = (e: React.MouseEvent) => handlePanMove(e.clientX);
 
-  // 5. NEW: Touch event handlers
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length > 0) {
-      e.preventDefault(); // Prevent page scroll
+      e.preventDefault(); 
       handlePanStart(e.touches[0].clientX);
     }
   };
   const handleTouchMove = (e: React.TouchEvent) => {
     if (e.touches.length > 0) {
-      e.preventDefault(); // Prevent page scroll
+      e.preventDefault(); 
       handlePanMove(e.touches[0].clientX);
     }
   };
-  // --- END REFACTOR ---
 
   const zoom = (factor: number) => {
     const { min, max } = activeView;
@@ -311,14 +307,13 @@ export default function LineChart({ data }: LineChartProps) {
           height: '100%',
           display: 'block',
           cursor: 'grab',
-          touchAction: 'none', // Prevents default touch actions
+          touchAction: 'none', 
         }}
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
-        onMouseUp={handlePanEnd} // Use handlePanEnd
-        onMouseLeave={handlePanEnd} // Use handlePanEnd
-        // --- ADDED TOUCH HANDLERS ---
+        onMouseUp={handlePanEnd} 
+        onMouseLeave={handlePanEnd}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handlePanEnd}

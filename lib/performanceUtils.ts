@@ -1,11 +1,10 @@
 /**
- * Creates a debounced function that delays invoking the function
- * until after 'wait' milliseconds have elapsed since the last time
- * the debounced function was invoked.
+ * Create a debounced function that delays invocation until 'wait' ms
+ * have elapsed since the last call. Useful for coalescing rapid events.
  *
- * @param {T} func - The function to debounce.
- * @param {number} wait - The number of milliseconds to delay.
- * @returns A new debounced function.
+ * @param func - Function to debounce
+ * @param wait - Delay in milliseconds
+ * @returns A debounced wrapper function
  */
 export const debounce = <T extends (...args: any[]) => any>(
   func: T,
@@ -27,12 +26,12 @@ export const debounce = <T extends (...args: any[]) => any>(
 };
 
 /**
- * Creates a throttled function that only invokes the function
- * at most once per every 'wait' milliseconds.
+ * Create a throttled function that limits invocations to at most one
+ * call per 'wait' milliseconds. Useful for rate-limiting expensive handlers.
  *
- * @param {T} func - The function to throttle.
- * @param {number} wait - The number of milliseconds to throttle invocations to.
- * @returns A new throttled function.
+ * @param func - Function to throttle
+ * @param wait - Throttle interval in milliseconds
+ * @returns A throttled wrapper function
  */
 export const throttle = <T extends (...args: any[]) => any>(
   func: T,
@@ -65,9 +64,11 @@ export const throttle = <T extends (...args: any[]) => any>(
 };
 
 /**
- * A simple utility to measure the execution time of a function.
- * @param {() => void} func - The function to measure.
- * @param {string} [label] - An optional label for the console log.
+ * Measure synchronous execution time of a function and log the result.
+ * Intended for quick local profiling during development.
+ *
+ * @param func - The synchronous function to measure
+ * @param label - Optional label used in the console output
  */
 export const measureExecutionTime = (func: () => void, label: string = 'Execution') => {
   const start = performance.now();

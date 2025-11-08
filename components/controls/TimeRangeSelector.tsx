@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 
-// Simple hook to track viewport width
+// Viewport width hook
 const useViewport = () => {
   const [width, setWidth] = useState(0);
 
   useEffect(() => {
     const handleResize = () => setWidth(window.innerWidth);
     
-    // Set initial width on mount
+  // Initialize width on mount
     handleResize(); 
     
     window.addEventListener('resize', handleResize);
@@ -19,7 +19,7 @@ const useViewport = () => {
   return { width };
 };
 
-const MOBILE_BREAKPOINT = 768; // pixels
+const MOBILE_BREAKPOINT = 768; // Mobile breakpoint in pixels
 
 // Define the time range options.
 const TIME_RANGE_OPTIONS = [
@@ -48,7 +48,7 @@ export default function TimeRangeSelector({ onTimeRangeChange }: TimeRangeSelect
     setSelectedRangeMs(value);
   };
 
-  // --- Futuristic Styles ---
+  // UI color variables
   const accentColor = '#00f2ff';
   const darkBg = '#1a1a2e';
   const lightText = '#e0e0e0';
@@ -65,7 +65,7 @@ export default function TimeRangeSelector({ onTimeRangeChange }: TimeRangeSelect
       fontFamily: 'monospace',
       boxShadow: `0 0 10px rgba(0, 242, 255, 0.3), 0 0 20px rgba(0, 242, 255, 0.2) inset`,
       
-      // --- Mobile Responsive Styles ---
+  // Mobile responsive styles
       display: 'flex',
       flexDirection: isMobile ? 'column' : 'row',
       alignItems: isMobile ? 'stretch' : 'center',
@@ -110,7 +110,7 @@ export default function TimeRangeSelector({ onTimeRangeChange }: TimeRangeSelect
                 fontWeight: isActive ? 'bold' : 'normal',
                 boxShadow: isActive ? `0 0 5px ${accentColor}` : 'none',
                 
-                // --- Mobile Responsive Styles ---
+                // Mobile responsive styles
                 flexGrow: isMobile ? 1 : 0, // Allow buttons to grow to fill space
                 minWidth: '100px', // Ensure buttons have a good tap size
               }}

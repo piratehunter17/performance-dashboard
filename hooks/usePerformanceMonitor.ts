@@ -7,7 +7,7 @@ export interface PerformanceMetrics {
   memoryUsed: number; // in MB
 }
 
-// Helper to access the non-standard performance.memory API
+// Wrapper to type the non-standard performance.memory API when available
 interface PerformanceWithMemory extends Performance {
   memory?: {
     totalJSHeapSize: number;
@@ -30,11 +30,11 @@ export const usePerformanceMonitor = () => {
   const lastTimeRef = useRef(performance.now());
   const animationFrameIdRef = useRef(0);
   
-  // We provide 'null' as the initial value for the ref.
-  const memoryIntervalIdRef = useRef<NodeJS.Timeout | null>(null);
+  // Store the memory interval ID using a numeric type for browser compatibility
+  const memoryIntervalIdRef = useRef<number | null>(null);
 
   useEffect(() => {
-    // --- FPS Monitoring ---
+  // Track frames-per-second using requestAnimationFrame
     const trackFPS = (now: number) => {
       const delta = now - lastTimeRef.current;
       frameCountRef.current++;
@@ -54,7 +54,7 @@ export const usePerformanceMonitor = () => {
       animationFrameIdRef.current = requestAnimationFrame(trackFPS);
     };
 
-    // --- Memory Monitoring ---
+    // Periodically sample memory usage if available
     const trackMemory = () => {
       const perf = window.performance as PerformanceWithMemory;
       if (perf.memory) {
@@ -66,12 +66,15 @@ export const usePerformanceMonitor = () => {
     };
 
     animationFrameIdRef.current = requestAnimationFrame(trackFPS);
-    memoryIntervalIdRef.current = setInterval(trackMemory, 1000);
+    
+  // Use window.setInterval to obtain a numeric ID compatible with the ref type
+  memoryIntervalIdRef.current = window.setInterval(trackMemory, 1000);
 
     return () => {
       cancelAnimationFrame(animationFrameIdRef.current);
       if (memoryIntervalIdRef.current) {
-        clearInterval(memoryIntervalIdRef.current);
+        // Clear the interval using the window API
+        window.clearInterval(memoryIntervalIdRef.current);
       }
     };
   }, []);

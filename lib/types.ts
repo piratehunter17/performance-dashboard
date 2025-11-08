@@ -1,16 +1,14 @@
 /**
- * Represents a single data point in our time-series.
+ * DataPoint
+ *
+ * Represents a single sample in the time-series used by the dashboard.
+ *
+ * Fields:
+ * - timestamp: Epoch milliseconds for the sample (number). Using number
+ *   keeps comparisons fast and allocations minimal.
+ * - value: Numeric measurement for the sample (e.g., CPU %, metric value).
  */
 export interface DataPoint {
-  /**
-   * The timestamp (e.g., Date.now()) when the data was recorded.
-   * We use 'number' for high-performance comparison.
-   */
   timestamp: number;
-
-  /**
-   * The value of the data at this timestamp.
-   * Can be any metric, like CPU usage, stock price, etc.
-   */
   value: number;
 }

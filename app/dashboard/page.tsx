@@ -10,9 +10,11 @@ export const dynamic = 'force-dynamic';
  */
 export default async function DashboardPage() {
   
-  // 1. Generate the initial data on the server (now at request time).
-  const initialData: DataPoint[] = generateInitialDataset(1000, 100);
+  // Simulate a server-side data fetch delay (1.5s) to demonstrate the loading skeleton.
+  await new Promise(resolve => setTimeout(resolve, 1500));
 
-  // 2. Pass the server-generated data as a prop to the Client Component.
+  // Generate the initial dataset on the server.
+  const initialData: DataPoint[] = generateInitialDataset(1000, 100);
+  // Pass the server-generated initial dataset to the client component as a prop.
   return <DashboardClient initialData={initialData} />;
 }

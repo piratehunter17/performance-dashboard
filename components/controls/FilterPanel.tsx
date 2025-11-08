@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 
-// --- HYDRATION-SAFE VIEWPORT HOOK ---
+// Hydration-safe viewport hook
 const useViewport = () => {
   const [width, setWidth] = useState<number | undefined>(undefined);
   useEffect(() => {
@@ -17,9 +17,9 @@ const useViewport = () => {
   }
   return { width, isMobile: width < 768 };
 };
-// --- END HOOK ---
+// End of hydration-safe viewport hook
 
-const MOBILE_BREAKPOINT = 768; // pixels
+const MOBILE_BREAKPOINT = 768; // Mobile breakpoint in pixels
 
 // Define the shape of the filter state
 export interface FilterState {
@@ -41,8 +41,8 @@ const AGGREGATION_OPTIONS = [
 ];
 
 export default function FilterPanel({ onFilterChange }: FilterPanelProps) {
-  // --- Local state for inputs ---
-  // --- FIX: Default aggregation to 1 Min Avg ---
+  // Local state for filter inputs
+  // Default aggregation set to 1 minute average
   const [aggregationMs, setAggregationMs] = useState(60000); 
   const [valueRange, setValueRange] = useState({ min: 0, max: 100 });
 
@@ -58,7 +58,7 @@ export default function FilterPanel({ onFilterChange }: FilterPanelProps) {
     });
   }, []);
 
-  // Click outside handler
+  // Click-outside handler for closing the dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -71,7 +71,7 @@ export default function FilterPanel({ onFilterChange }: FilterPanelProps) {
     };
   }, [dropdownRef]);
   
-  // Handlers now call onFilterChange
+  // Handlers update local state and propagate changes via onFilterChange
   const handleSelectOption = (value: number) => {
     setAggregationMs(value);
     onFilterChange({ aggregationIntervalMs: value });
@@ -94,7 +94,7 @@ export default function FilterPanel({ onFilterChange }: FilterPanelProps) {
     onFilterChange({ valueRange: { min: valueRange.min, max: newMax } });
   };
 
-  // --- Futuristic Styles ---
+  // UI color variables
   const accentColor = '#00f2ff';
   const darkBg = '#1a1a2e';
   const lightText = '#e0e0e0';

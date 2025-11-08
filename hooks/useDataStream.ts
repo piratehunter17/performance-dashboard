@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { DataPoint } from '../lib/types';
 
-// We must export this type so page.tsx can import it.
+// Export FilterState so external modules (e.g. page.tsx) can import and use it.
 export type FilterState = {
   aggregationIntervalMs: number;
   valueRange: { min: number; max: number };
@@ -34,24 +34,24 @@ export const useDataStream = (
     workerRef.current = worker;
 
     worker.onmessage = (e: MessageEvent<DataPoint[]>) => {
-      // 1. Save the 100k array to the ref
+      // Update the shared data buffer with the worker-provided array
       dataRef.current = e.data;
-      // 2. Increment the tick to trigger a re-render
-      setDataTick(tick => tick + 1); 
+      // Bump the render tick to notify consumers of new data
+      setDataTick(tick => tick + 1);
     };
-    
-    // Send the initial data and interval
-    worker.postMessage({ 
-      type: 'INIT', 
-      payload: { initialData, intervalMs: 100 }
+
+    // Initialize the worker with the initial dataset and default interval
+    worker.postMessage({
+      type: 'INIT',
+      payload: { initialData, intervalMs: 100 },
     });
 
     return () => {
       worker.terminate();
     };
-  }, [initialData]); // Run once
+  }, [initialData]); // Effect runs once to initialize worker
 
-  // --- Worker Control Functions ---
+  // Worker control functions
 
   const startStream = useCallback(() => {
     workerRef.current?.postMessage({ type: 'START' });

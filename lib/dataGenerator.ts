@@ -1,10 +1,10 @@
 import { DataPoint } from './types';
 
-// A base value to start our data simulation from
+// Initial seed value for the simulated data stream
 let lastValue = 50;
 const MAX_VALUE = 100;
 const MIN_VALUE = 0;
-const MAX_STEP = 2; // How much the value can change per step
+const MAX_STEP = 2; // Maximum change per step
 
 /**
  * Generates a single new data point based on the last value.
@@ -15,19 +15,19 @@ const MAX_STEP = 2; // How much the value can change per step
 export const generateNewDataPoint = (baseTimestamp?: number): DataPoint => {
   const timestamp = baseTimestamp || Date.now();
 
-  // Calculate the next value
+  // Compute the next value using a bounded random walk
   let newValue = lastValue + (Math.random() * 2 * MAX_STEP - MAX_STEP);
 
-  // Clamp the value between MIN and MAX
+  // Reflect the value if it exceeds bounds to keep it within [MIN_VALUE, MAX_VALUE]
   if (newValue > MAX_VALUE) {
-    newValue = MAX_VALUE - (newValue - MAX_VALUE); // Bounce off the ceiling
+    newValue = MAX_VALUE - (newValue - MAX_VALUE); // Reflect from upper bound
   } else if (newValue < MIN_VALUE) {
-    newValue = MIN_VALUE + (MIN_VALUE - newValue); // Bounce off the floor
+    newValue = MIN_VALUE + (MIN_VALUE - newValue); // Reflect from lower bound
   }
 
-  // Ensure it doesn't get stuck at the boundaries
-  if (newValue === lastValue && lastValue === MAX_VALUE || lastValue === MIN_VALUE) {
-    newValue = 50; // Reset to middle if stuck
+  // Prevent boundary lock: if value remains unchanged at an extreme, reinitialize to midpoint
+  if (newValue === lastValue && (lastValue === MAX_VALUE || lastValue === MIN_VALUE)) {
+    newValue = 50; // Reinitialize to midpoint
   }
 
   lastValue = newValue;

@@ -4,8 +4,8 @@ import React, { useRef, useState, useEffect } from 'react';
 import { useVirtualization } from '@/hooks/useVirtualization';
 import { DataPoint } from '@/lib/types';
 
-// --- HYDRATION-SAFE VIEWPORT HOOK ---
-// To know when we are on the client
+// Hydration-safe viewport hook
+// Detects client hydration and provides viewport width and mobile flag
 const useViewport = () => {
   const [width, setWidth] = useState<number | undefined>(undefined);
   useEffect(() => {
@@ -17,16 +17,16 @@ const useViewport = () => {
   }, []);
   
   if (width === undefined) {
-    return { width: 1024, isMobile: false, isHydrated: false }; // <-- Add isHydrated
+    return { width: 1024, isMobile: false, isHydrated: false };
   }
-  return { width, isMobile: width < 768, isHydrated: true }; // <-- Add isHydrated
+  return { width, isMobile: width < 768, isHydrated: true };
 };
-// --- END HOOK ---
+// End of hydration-safe viewport hook
 
 export default function DataTable({ data }: { data: DataPoint[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   
-  // --- 1. Get the 'isHydrated' flag ---
+  // Determine whether the component is hydrated on the client and viewport size
   const { isMobile, isHydrated } = useViewport();
   
   const rowHeight = isMobile ? 60 : 30;
@@ -50,7 +50,7 @@ export default function DataTable({ data }: { data: DataPoint[] }) {
   // On the server, this will be an empty array, avoiding the mismatch.
   const rowsToRender = isHydrated ? visibleItems : [];
 
-  // --- Futuristic Styles ---
+  // UI color variables
   const accentColor = '#00f2ff';
   const darkBg = '#1a1a2e';
   const cardBg = '#1f1f33';
@@ -95,13 +95,13 @@ export default function DataTable({ data }: { data: DataPoint[] }) {
       >
         <div style={{ height: `${totalHeight}px`, width: '100%' }}>
           
-          {/* 3. Render the safe array */}
+          {/* Render rows only when hydrated to avoid server/client markup mismatch */}
           {rowsToRender.map((item, index) => {
             const rowIndex = startIndex + index;
             
             return (
               <div
-                key={item.timestamp} // Make sure timestamps are unique
+                key={item.timestamp} // Use timestamp as a unique key (assumes uniqueness)
                 style={{
                   position: 'absolute',
                   top: `${rowIndex * rowHeight}px`,

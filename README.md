@@ -20,7 +20,7 @@ This project is a production-quality, real-time data visualization dashboard bui
     * **Data Aggregation:** A custom dropdown aggregates data into time buckets (1 Min, 5 Min, etc.) for the Bar Chart.
 * **100k+ Point Scalability:** The data worker automatically downsamples data when the 100,000-point limit is breached, ensuring stable memory usage indefinitely.
 * **Virtualized Data Table:** The data table uses a custom `useVirtualization` hook to render only the visible rows, effortlessly handling 100,000+ items.
-* **Fully Responsive Design:** A "futuristic" UI that works on desktop, tablet, and mobile, with touch events enabled for panning.
+* **Fully Responsive Design:** A modern UI that works on desktop, tablet, and mobile, with touch events enabled for panning.
 
 ---
 

@@ -1,13 +1,45 @@
 /*
-================================
---- FUTURISTIC THEME VARIABLES ---
-================================
+  Skeleton loader shimmer animation
+  Defines a reusable shimmer used for loading placeholders
 */
+
+/* Define the shimmer animation */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+/* Reusable skeleton element styling (shimmer effect) */
+.skeleton-shimmer {
+  /* Base background color for skeleton elements */
+  background-color: #1f1f33; /* --card-background */
+
+  /* Shimmer gradient configuration */
+  background-image: linear-gradient(
+    to right,
+    #1f1f33 0%,       /* Start with base color */
+    #3a3a5e 20%,      /* A lighter highlight */
+    #1f1f33 40%,      /* Back to base color */
+    #1f1f33 100%
+  );
+  
+  background-repeat: no-repeat;
+  background-size: 2000px 100%; /* Make the gradient very wide */
+  
+  /* Apply the animation */
+  animation: shimmer 2s linear infinite;
+}
+
+/* Theme variables for dashboard (dark, high-contrast palette) */
 :root {
-  --background: #1a1a2e; /* Dark Navy */
-  --foreground: #e0e0e0; /* Light Text */
-  --card-background: #1f1f33; /* Slightly Lighter Navy */
-  --accent: #00f2ff; /* Bright Cyan */
+  --background: #1a1a2e; /* Dark navy background */
+  --foreground: #e0e0e0; /* Primary text color */
+  --card-background: #1f1f33; /* Card background color */
+  --accent: #00f2ff; /* Accent color */
   --accent-glow: rgba(0, 242, 255, 0.3);
   --border-color: rgba(0, 242, 255, 0.5);
   --border-color-dim: rgba(0, 242, 255, 0.2);
@@ -23,7 +55,7 @@ body {
 body {
   color: var(--foreground);
   background: var(--background);
-  /* Use a futuristic monospace font */
+  /* Preferred monospace font stack for the UI */
   font-family: 'Space Mono', monospace, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -47,9 +79,7 @@ a {
 }
 
 /*
-================================
---- DASHBOARD STYLES ---
-================================
+  Dashboard layout and component styles
 */
 
 .db-page-wrapper {
@@ -135,8 +165,7 @@ a {
   box-shadow: 0 0 15px var(--accent-glow), 0 0 10px var(--accent-glow) inset;
   
 
-  /* This ensures that if content (like the data table) tries
-  to overflow, it gets cut off here, not at the body */
+  /* Ensure child content overflow is clipped within chart containers */
   overflow: hidden;
 }
 
@@ -152,9 +181,7 @@ a {
 }
 
 /*
-================================
---- MOBILE RESPONSIVENESS ---
-================================
+  Mobile responsiveness rules
 */
 @media (max-width: 768px) {
   .db-page-wrapper {

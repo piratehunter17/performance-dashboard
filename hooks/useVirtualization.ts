@@ -29,7 +29,7 @@ export const useVirtualization = ({
   const [scrollTop, setScrollTop] = useState(0);
   const [containerHeight, setContainerHeight] = useState(0);
 
-  // 3. Wrap the 'update' function in useCallback
+  // Wrap the 'update' function in useCallback to avoid recreating it across renders
   const update = useCallback(() => {
     if (containerRef.current) {
       setScrollTop(containerRef.current.scrollTop);
@@ -37,30 +37,29 @@ export const useVirtualization = ({
     }
   }, [containerRef]);
 
-  // Run on mount to get initial height
+  // Initialize measurements on mount
   useEffect(() => {
     update();
   }, [update]);
   
-  // 4. Create a throttled version of 'update'
-  //    This will only run, at most, once every 16ms (~60fps)
+  // Create a throttled version of 'update' to limit update frequency (~60fps)
   const throttledUpdate = useMemo(() => {
     return throttle(update, 16);
   }, [update]);
   
-  // Attach scroll and resize listeners
+  // Attach scroll and resize listeners to the container
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    // 5. Use the new 'throttledUpdate' for the scroll listener
+    // Use the throttled handler for scroll events to reduce update rate
     container.addEventListener('scroll', throttledUpdate, { passive: true });
     
-    // ResizeObserver is already efficient, 'update' is fine here
+    // Observe size changes and call the non-throttled update to get accurate dimensions
     const resizeObserver = new ResizeObserver(update);
     resizeObserver.observe(container);
 
-    // Cleanup
+    // Cleanup event listeners and observers on unmount
     return () => {
       container.removeEventListener('scroll', throttledUpdate);
       resizeObserver.disconnect();

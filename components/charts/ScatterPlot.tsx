@@ -4,7 +4,7 @@ import React, { useRef, useCallback, useState, useEffect, useMemo } from 'react'
 import { DataPoint } from '@/lib/types';
 import { useChartRenderer, DrawFunction } from '@/hooks/useChartRenderer';
 
-// --- HYDRATION-SAFE VIEWPORT HOOK ---
+// Hydration-safe viewport hook
 const useViewport = () => {
   const [width, setWidth] = useState<number | undefined>(undefined);
   useEffect(() => {
@@ -15,11 +15,11 @@ const useViewport = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   if (width === undefined) {
-    return { width: 1024, isMobile: false }; 
+    return { width: 1024, isMobile: false, isHydrated: false };
   }
-  return { width, isMobile: width < 768 };
+  return { width, isMobile: width < 768, isHydrated: true };
 };
-// --- END HOOK ---
+// End of viewport hook
 
 type ViewDomain = { min: number; max: number };
 interface ScatterPlotProps {
@@ -120,10 +120,11 @@ export default function ScatterPlot({
   pointColor = POINT_COLOR_DEFAULT, 
 }: ScatterPlotProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const { isMobile } = useViewport();
-  const chartHeight = isMobile ? '250px' : '300px';
+  
+  const { isMobile, isHydrated } = useViewport();
+  const defaultHeight = '300px'; // Server-rendered height
+  const chartHeight = isHydrated ? (isMobile ? '250px' : '300px') : defaultHeight;
 
-  // --- SAME LOGIC FROM LINECHART ---
   const [viewDomain, setViewDomain] = useState<ViewDomain | null>(null);
 
   const defaultDomain = useMemo(() => {
@@ -225,7 +226,6 @@ export default function ScatterPlot({
 
   useChartRenderer({
     canvasRef,
-    // We pass the required props for the scatter draw function
     data: [{ data, viewDomain: activeView, pointSize, pointColor }],
     draw: drawScatterPlot,
   });

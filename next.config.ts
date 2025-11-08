@@ -2,13 +2,13 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   
-  // Add this redirects function
+  // Configure route redirects
   async redirects() {
     return [
       {
         source: '/',
         destination: '/dashboard',
-        permanent: true, // Use true for production
+        permanent: true, // permanent redirect (set true for production)
       },
     ]
   },

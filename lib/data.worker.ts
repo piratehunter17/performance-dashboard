@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-// --- 1. Types & Data Generation Logic ---
+// Types and data generation utilities
 
 interface DataPoint {
   timestamp: number;
@@ -24,14 +24,14 @@ const generateNewDataPoint = (baseTimestamp?: number): DataPoint => {
   return { timestamp, value: newValue };
 };
 
-// --- 2. State Inside The Worker ---
+// Worker internal state
 
 let fullData: DataPoint[] = [];
-let intervalMs = 100; // Default interval
+let intervalMs = 100; // Default interval (ms)
 let intervalId: any = null;
 let isRunning = true;
 
-// Downsampling Logic
+// Downsampling utilities
 const MAX_DATA_POINTS = 100000;
 const downsample = (data: DataPoint[]): DataPoint[] => {
   const cutoff = Math.floor(data.length * 0.5);
@@ -54,43 +54,41 @@ const downsample = (data: DataPoint[]): DataPoint[] => {
 };
 
 
-// --- 3. The Worker's Main Loop ---
+// Main loop: generate, downsample, and throttle updates to main thread
 
 let throttleTimer: any = null;
 const runTick = () => {
-  // 1. Generate new point
+  // Generate and append a new data point
   fullData.push(generateNewDataPoint());
 
-  // 2. Downsample if needed
+  // Downsample if the buffer exceeds the maximum allowed points
   if (fullData.length > MAX_DATA_POINTS) {
     fullData = downsample(fullData);
   }
-
-  // 3. Throttle updates to the main thread (10fps)
+  // Throttle updates to the main thread (approx. 10 fps)
   if (!throttleTimer) {
     throttleTimer = setTimeout(() => {
-      // Post the FULL data array
+      // Send the current data buffer to the main thread
       postMessage(fullData);
       throttleTimer = null;
-    }, 100); // 10 updates per second
+    }, 100); // ~10 updates per second
   }
 };
 
-// Used to start streaming data points
+// Start streaming data points using the configured interval
 const startStream = () => {
   if (intervalId) clearInterval(intervalId);
   intervalId = setInterval(runTick, intervalMs);
   isRunning = true;
 };
-
-// Used to stop streaming data points
+// Stop streaming data points and clear the interval
 const stopStream = () => {
   if (intervalId) clearInterval(intervalId);
   intervalId = null;
   isRunning = false;
 };
 
-// --- 4. Worker Event Listener ---
+// Worker message event listener
 
 self.onmessage = (e: MessageEvent) => {
   const { type, payload } = e.data;

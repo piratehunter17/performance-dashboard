@@ -1,18 +1,17 @@
 import React from 'react';
 
 /**
- * This is the layout for the /dashboard route.
- * It wraps the dashboard page and any potential sub-pages.
- * * If we were building a larger app, this is where you would put
- * a dashboard-specific sidebar or nested header that
- * persists across all /dashboard/* routes.
+ * Layout for the /dashboard route.
+ *
+ * This component wraps dashboard pages and can host persistent
+ * dashboard-specific UI (for example: sidebars, persistent headers,
+ * or navigation) in larger applications.
  */
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // For this assignment, we just render the children directly.
-  // The root layout (app/layout.tsx) handles the main page structure.
+  // Render children directly. The application-level layout manages global structure.
   return <>{children}</>;
 }

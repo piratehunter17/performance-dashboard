@@ -1,13 +1,13 @@
-import { Inter, Space_Mono } from 'next/font/google' // 1. Import Space_Mono
+import { Inter, Space_Mono } from 'next/font/google'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
 
-// 2. Configure the font
+// Configure the Space Mono font for the application
 const spaceMono = Space_Mono({
   subsets: ['latin'],
   weight: ['400', '700'],
-  variable: '--font-space-mono', 
+  variable: '--font-space-mono',
 })
 
 export const metadata = {
@@ -21,7 +21,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    // 3. Add the font's class name to the body
+    // Apply the configured font class to the document body
     <html lang="en">
       <body className={spaceMono.className}>{children}</body>
     </html>

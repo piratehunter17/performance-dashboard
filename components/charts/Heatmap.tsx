@@ -4,7 +4,7 @@ import React, { useRef, useCallback, useState, useEffect, useMemo } from 'react'
 import { DataPoint } from '@/lib/types';
 import { useChartRenderer, DrawFunction } from '@/hooks/useChartRenderer';
 
-// --- HYDRATION-SAFE VIEWPORT HOOK ---
+// Hydration-safe viewport hook
 const useViewport = () => {
   const [width, setWidth] = useState<number | undefined>(undefined);
   useEffect(() => {
@@ -15,11 +15,11 @@ const useViewport = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   if (width === undefined) {
-    return { width: 1024, isMobile: false }; 
+    return { width: 1024, isMobile: false, isHydrated: false };
   }
-  return { width, isMobile: width < 768 };
+  return { width, isMobile: width < 768, isHydrated: true };
 };
-// --- END HOOK ---
+// End of viewport hook
 
 type HeatmapGrid = {
   grid: number[][];
@@ -122,16 +122,19 @@ const drawHeatmap = (
   }
 };
 
-// --- MAIN COMPONENT ---
+// Heatmap component implementation
 
 export default function Heatmap({
-  heatmapGrid // Use new prop
+  heatmapGrid 
 }: HeatmapProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const colorGradient = useColorGradient();
 
-  const { isMobile } = useViewport();
-  const chartHeight = isMobile ? '250px' : '300px';
+  // Hydration-safe height fallback
+  const { isMobile, isHydrated } = useViewport();
+  const defaultHeight = '300px'; // Server-rendered height
+  const chartHeight = isHydrated ? (isMobile ? '250px' : '300px') : defaultHeight;
+  // End hydration fallback
 
   const memoizedDraw: DrawFunction<HeatmapGrid> = useCallback((
     ctx,

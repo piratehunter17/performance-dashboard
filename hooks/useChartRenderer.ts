@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { configureCanvasDPI } from '@/lib/canvasUtils';
 
-// A generic draw function that any chart can implement
+// Generic draw function signature for chart renderers
 export type DrawFunction<T> = (
   ctx: CanvasRenderingContext2D,
   data: T[],
@@ -33,6 +33,11 @@ export const useChartRenderer = <T>({
   const drawRef = useRef(draw);
   const animationFrameIdRef = useRef(0);
 
+  // Refs to cache device pixel ratio and CSS dimensions to avoid DOM reads in the render loop
+  const dprRef = useRef(1);
+  const cssWidthRef = useRef(0);
+  const cssHeightRef = useRef(0);
+
   // Keep refs in sync with the latest props
   useEffect(() => {
     dataRef.current = data;
@@ -43,21 +48,24 @@ export const useChartRenderer = <T>({
   }, [draw]);
 
   useEffect(() => {
-    // The ref might be null, so we must check.
     const canvas = canvasRef.current;
-    if (!canvas) return; // Exit if canvas isn't mounted yet
+    if (!canvas) return; 
 
     const ctx = canvas.getContext('2d');
-    if (!ctx) return; // Exit if context isn't available
+    if (!ctx) return; 
 
-    // The main animation loop
+  // The main animation/render loop
     const renderLoop = () => {
       const currentData = dataRef.current;
       const currentDraw = drawRef.current;
-      
-      configureCanvasDPI(canvas, ctx);
-      const { width: cssWidth, height: cssHeight } = canvas.getBoundingClientRect();
 
+  // Use cached values rather than reading from the DOM each frame
+      const cssWidth = cssWidthRef.current;
+      const cssHeight = cssHeightRef.current;
+      const dpr = dprRef.current;
+
+      // Ensure transform is reset for scaling and clearing
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, cssWidth, cssHeight);
 
       if (currentData.length > 0) {
@@ -67,9 +75,19 @@ export const useChartRenderer = <T>({
       animationFrameIdRef.current = requestAnimationFrame(renderLoop);
     };
 
-    // --- Resize Handling ---
+    // Resize handling: observe layout changes and update cached dimensions
     const resizeObserver = new ResizeObserver(() => {
-      // Loop will pick up new size on next frame
+      // Read layout metrics here to minimize layout thrashing in the render loop
+      const rect = canvas.getBoundingClientRect();
+      const newWidth = Math.floor(rect.width);
+      const newHeight = Math.floor(rect.height);
+
+      // Configure backing store for high-DPI displays and store device pixel ratio
+      dprRef.current = configureCanvasDPI(canvas, ctx, newWidth, newHeight);
+
+      // Cache the CSS dimensions for use by the render loop
+      cssWidthRef.current = newWidth;
+      cssHeightRef.current = newHeight;
     });
     resizeObserver.observe(canvas);
 

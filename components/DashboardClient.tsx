@@ -5,7 +5,7 @@ import { DataProvider, useData } from '@/components/providers/DataProvider';
 import { DataPoint } from '@/lib/types'; 
 import { FilterState } from '@/hooks/useDataStream'; 
 
-// Import all components
+// Component imports
 import LineChart from '@/components/charts/LineChart';
 import BarChart from '@/components/charts/BarChart';
 import ScatterPlot from '@/components/charts/ScatterPlot';
@@ -15,7 +15,7 @@ import DataTable from '@/components/ui/DataTable';
 import FilterPanel from '@/components/controls/FilterPanel';
 import TimeRangeSelector from '@/components/controls/TimeRangeSelector';
 
-// --- Sub-component: Header ---
+// Header sub-component
 function DashboardHeader({ totalPoints, displayedPoints }: { totalPoints: number; displayedPoints: number }) {
   return (
     <header className="db-header">
@@ -29,7 +29,7 @@ function DashboardHeader({ totalPoints, displayedPoints }: { totalPoints: number
   );
 }
 
-// --- Sub-component: Controls ---
+// Controls sub-component
 function DashboardControlPanel({
   isRunning,
   onStreamToggle,
@@ -67,7 +67,7 @@ function DashboardControlPanel({
   );
 }
 
-// --- Sub-component: Chart Grid ---
+// Chart grid sub-component
 function ChartGrid({
   lineData,
   barData,
@@ -119,7 +119,7 @@ function DashboardLayout() {
     aggregationIntervalMs: 60000,
     valueRange: { min: 0, max: 100 },
   });
-  const [timeRangeMs, setTimeRangeMs] = useState<number>(300000); // 5 min default
+  const [timeRangeMs, setTimeRangeMs] = useState<number>(300000); // Default time range: 5 minutes
   
   const [, startTransition] = useTransition();
   
@@ -152,7 +152,7 @@ function DashboardLayout() {
     };
   }, [deferredTick, filters, timeRangeMs, dataRef]);
 
-  // Callbacks for controls
+  // Control callbacks
   const handleFilterChange = useCallback((newFilters: Partial<FilterState>) => {
     startTransition(() => {
       setFilters(prev => ({ ...prev, ...newFilters }));
@@ -197,7 +197,7 @@ function DashboardLayout() {
   );
 }
 
-// --- Helper functions (from page.tsx) ---
+// Helper utility functions
 const sampleData = (data: DataPoint[], maxPoints: number): DataPoint[] => {
   const validData = data.filter(p => p);
   if (validData.length <= maxPoints) return validData;
@@ -249,7 +249,7 @@ const binHeatmapData = (data: DataPoint[], numXBins: number = 50, numYBins: numb
   return { grid, maxCount };
 };
 
-// --- Page Entry Point ---
+// Component entry point
 export default function DashboardClient({ initialData }: { initialData: DataPoint[] }) {
   return (
     <DataProvider initialData={initialData}>

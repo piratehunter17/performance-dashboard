@@ -46,6 +46,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({
 export const useData = (): DataContextState => {
   const context = useContext(DataContext);
   if (context === undefined) {
+    // Guard: ensure hook is used within provider context
     throw new Error('useData must be used within a DataProvider');
   }
   return context;
